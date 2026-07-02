@@ -1,6 +1,5 @@
-# PROJECT LAAS — v2
+# PROJECT Killdeer — v1
 ### Fully procedural open world in the browser — WebGPU capability stress test
-*(laas — Estonian: old-growth forest)*
 
 ---
 
