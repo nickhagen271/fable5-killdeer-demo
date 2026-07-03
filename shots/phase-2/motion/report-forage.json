@@ -1,13 +1,13 @@
 {
-  "capturedAt": "2026-07-03T14:53:53.399Z",
+  "capturedAt": "2026-07-03T16:13:28.664Z",
   "seed": 7,
   "size": "960x540",
   "boilCheckPass": null,
   "paths": {
     "forage": {
       "frames": 110,
-      "meanDiff": 0.02897535819458602,
-      "maxDiff": 0.13355902777777778
+      "meanDiff": 4.916805549656436,
+      "maxDiff": 12.430264917695473
     }
   }
 }

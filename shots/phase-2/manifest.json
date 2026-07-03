@@ -2,7 +2,7 @@
   "phase": 2,
   "seed": 7,
   "size": "1280x720",
-  "capturedAt": "2026-07-03T13:46:36.880Z",
+  "capturedAt": "2026-07-03T16:23:39.786Z",
   "backend": "WebGPU",
   "adapter": {
     "vendor": "google",
@@ -12,6 +12,15 @@
   },
   "computeTest": "pass",
   "shots": [
-    "bird_peck"
+    "vista",
+    "ground",
+    "detail",
+    "macro",
+    "sky",
+    "bird_idle",
+    "bird_run",
+    "bird_peck",
+    "bird_alert",
+    "follow"
   ]
 }
