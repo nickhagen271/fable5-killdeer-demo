@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-07-03T15:26:26.108Z",
+  "seed": 7,
+  "size": "960x540",
+  "boilCheckPass": true,
+  "paths": {
+    "static": {
+      "frames": 12,
+      "meanDiff": 0,
+      "maxDiff": 0
+    },
+    "orbit": {
+      "frames": 30,
+      "meanDiff": 11.591326561834823,
+      "maxDiff": 12.544283693415638
+    },
+    "sprint": {
+      "frames": 30,
+      "meanDiff": 6.954093142471974,
+      "maxDiff": 7.885628858024691
+    }
+  }
+}

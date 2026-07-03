@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>phase 2 sprint</title><style>
+      body { margin:0; background:#17181a; color:#dde2d6; font:13px ui-monospace,Menlo,monospace; }
+      .bar { padding:8px 12px; } img { display:block; max-width:100vw; }
+    </style></head><body>
+    <div class="bar">phase 2 sprint — space: play/pause · ←/→: step</div><img id="f">
+    <script>
+      const frames=["f000.png","f001.png","f002.png","f003.png","f004.png","f005.png","f006.png","f007.png","f008.png","f009.png","f010.png","f011.png","f012.png","f013.png","f014.png","f015.png","f016.png","f017.png","f018.png","f019.png","f020.png","f021.png","f022.png","f023.png","f024.png","f025.png","f026.png","f027.png","f028.png","f029.png"];let i=0,run=true;const img=document.getElementById('f');
+      const show=()=>{img.src=frames[i];document.querySelector('.bar').textContent='phase 2 sprint · frame '+i+'/'+(frames.length-1)+' — space: play/pause, arrows: step';};
+      setInterval(()=>{if(run){i=(i+1)%frames.length;show();}},83);
+      addEventListener('keydown',(e)=>{if(e.key===' ')run=!run;if(e.key==='ArrowRight'){i=(i+1)%frames.length;show();}if(e.key==='ArrowLeft'){i=(i-1+frames.length)%frames.length;show();}});
+      show();
+    </script></body></html>

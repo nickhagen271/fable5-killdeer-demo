@@ -144,19 +144,29 @@ async function main(): Promise<void> {
 
       if (name === "gait") {
         await page.evaluate(() => window.__PKD?.setPose(0.55, 0.22, 0.06, 0, 0.14, 0.02));
-      } else if (name === "forage") {
-        await page.evaluate(() => window.__PKD?.setPose(1.5, 0.5, 1.9, 0, 0.1, -0.6));
       }
 
       for (let i = 0; i < frameCount; i++) {
         if (name === "gait") {
           await page.evaluate((ph) => window.__PKD?.birdPreset("run", ph), i / frameCount);
         } else if (name === "forage") {
-          // 30 fps script: dash away, brake (auto-peck usually follows), dash again.
+          // 30 fps script: dash, hard stop, scripted peck, dash again — the
+          // signature loop. A side camera tracks the estimated bird position.
           const t = i / 30;
-          const running = t < 1.1 || (t > 2.3 && t < 3.1);
+          const running = t < 1.1 || (t > 2.4 && t < 3.2);
           const mz = running ? -1 : 0;
-          await page.evaluate(([dt, mx, z]) => window.__PKD?.birdStep(dt, mx, z, false), [1 / 30, 0, mz] as const);
+          const peck = i === Math.round(1.7 * 30);
+          // crude integral of the controller's accel curve, for framing only
+          const dist = (from: number, to: number): number => Math.max(0, Math.min(to, t) - from);
+          const zEst = -(Math.max(0, dist(0.12, 1.18)) * 1.9 + dist(2.52, 3.3) * 1.9);
+          await page.evaluate(
+            ([dt, mx, z, pk]) => window.__PKD?.birdStep(dt, mx, z, pk === 1),
+            [1 / 30, 0, mz, peck ? 1 : 0] as const,
+          );
+          await page.evaluate(
+            ([z]) => window.__PKD?.setPose(1.05, 0.34, z + 0.1, 0, 0.16, z),
+            [zEst] as const,
+          );
         } else {
           const pose = poseFn(i, frameCount);
           if (pose) {
