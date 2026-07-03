@@ -6,6 +6,91 @@ significant differences ranked by impact, fix the top three, re-shoot.
 
 ---
 
+## Phase 2 — 2026-07-03, seed 7
+
+Comparison set: `shots/phase-2/compare/` (bird shots vs the KD reference
+plates). Animation evidence: `shots/phase-2/motion/gait/` (run-cycle sweep),
+`shots/phase-2/motion/forage/` (scripted run-stop-peck behavior pass), plus
+the standard static/orbit/sprint battery re-run with the bird in frame.
+
+**What phase 2 built.** The killdeer: a procedural mesh sculpted entirely in
+code (lathe body, sphere head, cone bill, wedge tail, folded-wing panels,
+cylinder legs) on a group-hierarchy rig; every marking painted procedurally
+in part-local coordinates through the same palette LUT as the field — warm
+taupe back, cream underparts, **both black breast bands** (lower band front
+and sides, upper band a full neck ring under a white collar), white forehead
+and supercilium, umber cheek stripe, orange-red eye ring around the dark
+eye, rust rump and tail with dark subterminal band; a procedural animation
+state machine (run gait, run-stop-peck, idle with weight shifts, head
+scanning and preens, alert freeze); player control with plover locomotion
+(fast pivots, hard stops, speed shed while turning); and a damped
+third-person follow camera. The bird stands on the paint surface (root
+raised to the impasto top) with a soft painted contact shadow.
+
+### Top ten deltas (ranked by impact)
+
+1. **The bird's surface has no stroke geometry.** The field is built from
+   ribbons; the bird is a shaded mesh in the same LUT/bristle language.
+   At close range its paint reads thinner than the world's. The honest fix
+   (feather-shell stroke ribbons on the body) is queued behind phase-3
+   priorities. Partially mitigated: bristle striations, quantized values,
+   painted edge turn.
+2. **Head/neck junction is abrupt at some angles.** → **FIXED (round 2):**
+   bigger head, shorter thicker neck, head seated lower into the collar.
+3. **Bands read too far from the head.** → **FIXED:** upper band tightened
+   against the collar (t 0.84–0.93), lower band and gap shifted forward.
+4. **Face pattern smeared at the eye.** → **FIXED:** cheek stripe narrowed
+   and dropped to umber so the dark eye + orange ring read inside it;
+   forehead patch reduced; supercilium widened.
+5. **Legs were buried in the impasto.** → **FIXED:** bird root raised to the
+   paint surface (~0.045) so the tarsi and toes are visible.
+6. **Peck buried the bill under the paint.** → **FIXED:** shallower dip
+   (bodyPitch 0.48, neckPitch 0.78) — bill meets the surface, not the void.
+7. **No wing detail beyond tone panels.** Folded primaries are a dark mass;
+   no scapular feather rhythm. Phase-3/4 brushwork territory.
+8. **Tail fan is rigid.** Single wedge; no spread on stops/pivots (the rust
+   fan flash is a killdeer signature in motion). Candidate for phase 4 polish.
+9. **Contact shadow is a uniform blob** — should smear along the light's
+   away side like a laid stroke.
+10. **Bird scale vs stroke scale**: near strokes are broader than the bird's
+    whole flank, which is painterly but occasionally swallows the silhouette;
+    phase-3 grass will restructure the near field.
+
+Fixed this phase: 2, 3, 4 (identity), plus 5 and 6 found during the loop.
+
+### Verification battery (phase 2)
+
+- **Coherence:** static boil check re-run with the bird in frame — PASS
+  (pixel-identical; the bird holds a deterministic preset in harness mode).
+  Orbit/sprint unchanged (world-anchored geometry).
+- **Killdeer test:** both breast bands present and correctly placed; plover
+  posture; run-stop-peck present (gait sweep + forage sequence). Legible in
+  the side-by-sides vs KD1–KD3.
+- **Filter/palette tests:** unchanged from phase 1 — the bird's pigment is
+  LUT-sampled from the same bounded palette (six new rows).
+- **Contact sheet:** vista / ground / detail / macro / sky / bird_idle /
+  bird_run / bird_peck / bird_alert / follow in `shots/phase-2/`.
+
+### Self-score rubric (phase 2)
+
+| Row | Score | What raises this by 2 |
+|---|---|---|
+| Brushwork & impasto fidelity | 5 | Feather-shell strokes on the bird (1) |
+| Palette & value structure | 5 | Phase-3 dark vegetation mass |
+| Broken color | 6 | Feather-flank broken color on the bird's back |
+| Edge control | 3 | Phase-4 edge pass (bird silhouette lost-and-found) |
+| Stroke coherence in motion | 8 | unchanged (world geometry) |
+| Killdeer identity | 7 | Feather rhythm on wing/back; softer head-body blend |
+| Killdeer animation & run-stop-peck | 6 | Tail-fan on stops (8); stride-synced head stabilization |
+| Field & environment painting | 4 | Phase 3 |
+| Wind & motion | — | Phase 4 |
+| Composition & camera | 5 | Follow-cam framing tuned against Ref 1 once the field has anchors |
+
+Cheapest +2s implemented: bands/face/head rework (identity 5→7 by the KD
+side-by-side), legs/peck grounding (animation readability).
+
+---
+
 ## Phase 1 — 2026-07-02, seed 7
 
 Comparison set: `shots/phase-1/compare/`. Coherence evidence:

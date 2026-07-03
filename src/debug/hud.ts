@@ -16,6 +16,7 @@ export interface HudInfo {
   readonly adapter: AdapterReport;
   readonly computeTest: ComputeTestState;
   readonly shot: string;
+  readonly bird?: string;
 }
 
 /**
@@ -76,8 +77,9 @@ export class Hud {
       `size     ${stats.width}x${stats.height} @${stats.pixelRatio.toFixed(2)}x`,
       `seed     ${this.info.seed}`,
       `shot     ${this.info.shot}`,
+      `bird     ${this.info.bird ?? "-"}`,
       `compute  ${this.info.computeTest}`,
-      `keys     h hud · 1-4 shots · drag orbit`,
+      `keys     h hud · wasd run · space peck · f alert · c freecam`,
     ].join("\n");
   }
 }

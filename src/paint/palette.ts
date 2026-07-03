@@ -18,7 +18,34 @@ export const GROUND_PALETTE: readonly number[] = [
   0xc2543d, // 7 poppy red-orange
   0xe8dfc2, // 8 dry-grass cream
   0xa38a5c, // 9 earth ochre
+  // killdeer rows — same bounded discipline, sampled by the bird's markings
+  0x8d7458, // 10 warm taupe back/wings
+  0x514233, // 11 dark umber (stripes, wing tips, bill)
+  0xf2e9d6, // 12 clean cream underparts
+  0x2c2620, // 13 band black (warm near-black, never pure)
+  0xc06a38, // 14 rust orange rump/tail
+  0xc5b3a0, // 15 pale leg
 ];
+
+/** Named palette rows so markings read as intent, not magic numbers. */
+export const ROW = {
+  meadow: 0,
+  sunGreen: 1,
+  ochre: 2,
+  coolGreen: 3,
+  blueGreen: 4,
+  violet: 5,
+  rose: 6,
+  poppy: 7,
+  cream: 8,
+  earth: 9,
+  birdTaupe: 10,
+  birdUmber: 11,
+  birdCream: 12,
+  birdBlack: 13,
+  birdRust: 14,
+  birdLeg: 15,
+} as const;
 
 /** Discrete value steps — paint mixes in planes of value, not gradients. */
 export const VALUE_STEPS = 6;

@@ -1,0 +1,17 @@
+{
+  "phase": 2,
+  "seed": 7,
+  "size": "1280x720",
+  "capturedAt": "2026-07-03T13:46:36.880Z",
+  "backend": "WebGPU",
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "device": "",
+    "description": ""
+  },
+  "computeTest": "pass",
+  "shots": [
+    "bird_peck"
+  ]
+}

@@ -25,6 +25,13 @@ export interface PkdHooks {
   setShot: (name: string) => boolean;
   /** Place the camera exactly (position, look-at target) — for motion paths. */
   setPose: (px: number, py: number, pz: number, tx: number, ty: number, tz: number) => void;
+  /** Deterministic bird pose (preset name, cycle phase 0..1) — harness only. */
+  birdPreset: (preset: string, phase: number) => boolean;
+  /**
+   * Step the live bird simulation by dt with scripted input — deterministic
+   * given the same call sequence, so behavior can be captured headless.
+   */
+  birdStep: (dt: number, moveX: number, moveZ: number, peck: boolean) => void;
 }
 
 declare global {
@@ -45,6 +52,8 @@ export function installHooks(seed: number): PkdHooks {
     shots: [],
     setShot: () => false,
     setPose: () => undefined,
+    birdPreset: () => false,
+    birdStep: () => undefined,
   };
   window.__PKD = hooks;
   return hooks;

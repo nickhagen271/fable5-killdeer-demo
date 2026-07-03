@@ -1,4 +1,6 @@
 import { Mesh, PerspectiveCamera, PlaneGeometry, Scene, Vector3, type WebGPURenderer } from "three/webgpu";
+import { Bird } from "../bird/bird";
+import type { BirdPreset } from "../bird/birdAnim";
 import { PaintFields } from "../paint/fields";
 import { buildGroundLUT } from "../paint/palette";
 import { STROKE_LODS, StrokeLOD } from "../paint/strokes";
@@ -6,14 +8,16 @@ import { buildUnderpaint } from "../paint/underpaint";
 import { buildSkyDome } from "./sky";
 
 /**
- * Phase-1 world: one open sunlit ground surface painted with world-anchored
- * impasto strokes over a canvas-tooth underpaint, beneath the hazy sky.
+ * The world: one open sunlit ground surface painted with world-anchored
+ * impasto strokes, the hazy sky, and — since phase 2 — the killdeer.
  */
 
 export interface Shot {
   readonly name: string;
   readonly position: Vector3;
   readonly target: Vector3;
+  /** Optional deterministic bird pose applied with the shot (harness). */
+  readonly bird?: { readonly preset: BirdPreset; readonly phase: number };
 }
 
 const SHOTS: readonly Shot[] = [
@@ -22,6 +26,36 @@ const SHOTS: readonly Shot[] = [
   { name: "detail", position: new Vector3(0, 1.15, 2.6), target: new Vector3(0.5, 0, -1.6) },
   { name: "macro", position: new Vector3(0.3, 0.5, 1.1), target: new Vector3(0.05, 0.06, -0.9) },
   { name: "sky", position: new Vector3(0, 2, 12), target: new Vector3(0, 26, -70) },
+  {
+    name: "bird_idle",
+    position: new Vector3(0.34, 0.25, 0.42),
+    target: new Vector3(0, 0.17, 0),
+    bird: { preset: "idle", phase: 0 },
+  },
+  {
+    name: "bird_run",
+    position: new Vector3(0.52, 0.21, 0.1),
+    target: new Vector3(0, 0.16, 0.02),
+    bird: { preset: "run", phase: 0.18 },
+  },
+  {
+    name: "bird_peck",
+    position: new Vector3(0.36, 0.23, 0.38),
+    target: new Vector3(0, 0.12, 0.06),
+    bird: { preset: "peck", phase: 0.5 },
+  },
+  {
+    name: "bird_alert",
+    position: new Vector3(0.3, 0.29, 0.52),
+    target: new Vector3(0, 0.2, 0),
+    bird: { preset: "alert", phase: 0 },
+  },
+  {
+    name: "follow",
+    position: new Vector3(0, 0.51, -1.2),
+    target: new Vector3(0, 0.2, 0.35),
+    bird: { preset: "idle", phase: 0 },
+  },
 ];
 
 export interface PaintWorld {
@@ -29,6 +63,7 @@ export interface PaintWorld {
   readonly camera: PerspectiveCamera;
   readonly shots: readonly Shot[];
   readonly strokeCount: number;
+  readonly bird: Bird;
   applyShot(name: string): boolean;
   /** Per-frame: stream stroke tiles around the camera. */
   update(renderer: WebGPURenderer): void;
@@ -52,13 +87,17 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     strokeCount += lod.mesh.count;
   }
 
-  const camera = new PerspectiveCamera(45, aspect, 0.1, 1500);
+  const bird = new Bird(lut, seed);
+  scene.add(bird.root);
+
+  const camera = new PerspectiveCamera(45, aspect, 0.05, 1500);
 
   const applyShot = (name: string): boolean => {
     const shot = SHOTS.find((s) => s.name === name);
     if (!shot) return false;
     camera.position.copy(shot.position);
     camera.lookAt(shot.target);
+    if (shot.bird) bird.applyPreset(shot.bird.preset, shot.bird.phase);
     return true;
   };
   applyShot("vista");
@@ -67,5 +106,5 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     for (const lod of lods) lod.update(renderer, camera.position.x, camera.position.z);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, applyShot, update };
 }

@@ -50,6 +50,7 @@ interface Args {
   readonly width: number;
   readonly height: number;
   readonly phase: number;
+  readonly paths: readonly string[] | null;
 }
 
 function parseArgs(argv: readonly string[]): Args {
@@ -58,12 +59,14 @@ function parseArgs(argv: readonly string[]): Args {
     return i >= 0 && i + 1 < argv.length ? argv[i + 1] : null;
   };
   const size = (get("--size") ?? "960x540").split("x");
+  const paths = get("--paths");
   return {
     seed: Number(get("--seed") ?? 7),
     frames: Number(get("--frames") ?? 40),
     width: Number(size[0]),
     height: Number(size[1]),
     phase: Number(get("--phase") ?? 1),
+    paths: paths ? paths.split(",") : null,
   };
 }
 
@@ -120,24 +123,49 @@ async function main(): Promise<void> {
     await waitForApp(page);
     await settleFrames(page, 10);
 
-    const paths: Record<string, (i: number, n: number) => Pose> = {
+    // Camera paths test stroke coherence; bird paths test the animation.
+    // gait: run-cycle sweep at a fixed side camera. forage: a scripted
+    // run-stop-peck-run behavior pass stepped at 30 fps.
+    const paths: Record<string, (i: number, n: number) => Pose | null> = {
       static: () => staticPose(),
       orbit: orbitPose,
       sprint: sprintPose,
+      gait: () => null,
+      forage: () => null,
     };
 
-    for (const [name, poseFn] of Object.entries(paths)) {
+    const active = args.paths ? Object.entries(paths).filter(([n]) => args.paths?.includes(n)) : Object.entries(paths);
+
+    for (const [name, poseFn] of active) {
       const dir = join(outRoot, name);
       mkdirSync(dir, { recursive: true });
-      const frameCount = name === "static" ? 12 : args.frames;
+      const frameCount = name === "static" ? 12 : name === "gait" ? 16 : args.frames;
       const files: string[] = [];
 
+      if (name === "gait") {
+        await page.evaluate(() => window.__PKD?.setPose(0.55, 0.22, 0.06, 0, 0.14, 0.02));
+      } else if (name === "forage") {
+        await page.evaluate(() => window.__PKD?.setPose(1.5, 0.5, 1.9, 0, 0.1, -0.6));
+      }
+
       for (let i = 0; i < frameCount; i++) {
-        const pose = poseFn(i, frameCount);
-        await page.evaluate(
-          ([p, t]) => window.__PKD?.setPose(p[0], p[1], p[2], t[0], t[1], t[2]),
-          [pose.p, pose.t] as const,
-        );
+        if (name === "gait") {
+          await page.evaluate((ph) => window.__PKD?.birdPreset("run", ph), i / frameCount);
+        } else if (name === "forage") {
+          // 30 fps script: dash away, brake (auto-peck usually follows), dash again.
+          const t = i / 30;
+          const running = t < 1.1 || (t > 2.3 && t < 3.1);
+          const mz = running ? -1 : 0;
+          await page.evaluate(([dt, mx, z]) => window.__PKD?.birdStep(dt, mx, z, false), [1 / 30, 0, mz] as const);
+        } else {
+          const pose = poseFn(i, frameCount);
+          if (pose) {
+            await page.evaluate(
+              ([p, t]) => window.__PKD?.setPose(p[0], p[1], p[2], t[0], t[1], t[2]),
+              [pose.p, pose.t] as const,
+            );
+          }
+        }
         await settleFrames(page, 2);
         const file = join(dir, `f${String(i).padStart(3, "0")}.png`);
         await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height } });
@@ -155,14 +183,16 @@ async function main(): Promise<void> {
     }
 
     const staticReport = report.static;
-    const pass = staticReport !== undefined && staticReport.maxDiff === 0;
-    console.log(pass ? "BOIL CHECK PASS: static sequence is pixel-identical" : "BOIL CHECK FAIL: static frames differ — temporal shimmer present");
+    const pass = staticReport === undefined ? null : staticReport.maxDiff === 0;
+    if (pass !== null) {
+      console.log(pass ? "BOIL CHECK PASS: static sequence is pixel-identical" : "BOIL CHECK FAIL: static frames differ — temporal shimmer present");
+    }
 
     writeFileSync(
-      join(outRoot, "report.json"),
+      join(outRoot, `report${args.paths ? `-${args.paths.join("-")}` : ""}.json`),
       `${JSON.stringify({ capturedAt: new Date().toISOString(), seed: args.seed, size: `${args.width}x${args.height}`, boilCheckPass: pass, paths: report }, null, 2)}\n`,
     );
-    if (!pass) process.exitCode = 1;
+    if (pass === false) process.exitCode = 1;
   } finally {
     await browser.close();
     await server.close();

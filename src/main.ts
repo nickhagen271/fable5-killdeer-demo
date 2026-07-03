@@ -1,4 +1,4 @@
-import { Vector3 } from "three/webgpu";
+import { Vector2, Vector3 } from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { installHooks } from "./core/hooks";
 import { readParams } from "./core/params";
@@ -7,6 +7,7 @@ import { bootDone, bootMsg, failLoud } from "./render/diagnostics";
 import { initWebGPU } from "./render/initWebGPU";
 import { runComputeSelfTest } from "./render/selfTest";
 import { buildPaintWorld } from "./world/field";
+import { FollowCamera } from "./world/followCamera";
 
 async function main(): Promise<void> {
   const params = readParams(window.location.search);
@@ -44,16 +45,15 @@ async function main(): Promise<void> {
     params.hud,
   );
 
-  const controls = params.harness ? null : new OrbitControls(world.camera, renderer.domElement);
+  // Interactive mode: the follow camera owns the view; 'c' toggles a free
+  // orbit camera for inspection. Harness mode: shots and setPose only.
+  const followCam = params.harness ? null : new FollowCamera(world.camera);
+  let freeCam: OrbitControls | null = null;
+  let freeMode = false;
 
   const setShot = (name: string): boolean => {
     if (!world.applyShot(name)) return false;
     currentShot = name;
-    const shot = world.shots.find((s) => s.name === name);
-    if (controls && shot) {
-      controls.target.copy(shot.target);
-      controls.update();
-    }
     hud.setInfo({ shot: name });
     return true;
   };
@@ -62,27 +62,41 @@ async function main(): Promise<void> {
   hooks.setPose = (px, py, pz, tx, ty, tz): void => {
     world.camera.position.set(px, py, pz);
     world.camera.lookAt(tx, ty, tz);
-    if (controls) {
-      controls.target.set(tx, ty, tz);
-      controls.update();
-    }
     hud.setInfo({ shot: "pose" });
   };
+  hooks.birdPreset = (preset, phase): boolean => {
+    if (preset !== "idle" && preset !== "run" && preset !== "peck" && preset !== "alert") return false;
+    world.bird.applyPreset(preset, phase);
+    return true;
+  };
+  const scriptMove = new Vector2();
+  hooks.birdStep = (dt, moveX, moveZ, peck): void => {
+    scriptMove.set(moveX, moveZ);
+    world.bird.update(dt, scriptMove, { peck, alert: false });
+  };
 
-  // Ground-glide movement for the interactive coherence check: WASD moves
-  // camera and orbit target together, shift sprints at bird speed.
   const held = new Set<string>();
-  window.addEventListener("keydown", (ev) => held.add(ev.key.toLowerCase()));
+  const pressed = new Set<string>();
+  window.addEventListener("keydown", (ev) => {
+    if (!ev.repeat) pressed.add(ev.key.toLowerCase());
+    held.add(ev.key.toLowerCase());
+  });
   window.addEventListener("keyup", (ev) => held.delete(ev.key.toLowerCase()));
 
-  if (controls) {
-    controls.enableDamping = true;
-    controls.target.copy(world.shots.find((s) => s.name === currentShot)?.target ?? controls.target);
-    controls.update();
+  if (followCam) {
+    followCam.snap(world.bird);
     window.addEventListener("keydown", (ev) => {
-      const idx = Number(ev.key) - 1;
-      const shot = world.shots[idx];
-      if (shot) setShot(shot.name);
+      if (ev.key.toLowerCase() === "c") {
+        freeMode = !freeMode;
+        if (freeMode && !freeCam) {
+          freeCam = new OrbitControls(world.camera, renderer.domElement);
+          freeCam.enableDamping = true;
+        }
+        if (freeCam) {
+          freeCam.enabled = freeMode;
+          if (freeMode) freeCam.target.copy(world.bird.position);
+        }
+      }
     });
   }
 
@@ -98,8 +112,8 @@ async function main(): Promise<void> {
 
   bootMsg("first frame", 0.95);
 
-  const fwd = new Vector3();
-  const side = new Vector3();
+  const camFwd = new Vector3();
+  const move = new Vector2();
   let lastTime = performance.now();
   let fpsSmoothed = 0;
 
@@ -112,24 +126,34 @@ async function main(): Promise<void> {
       fpsSmoothed = fpsSmoothed === 0 ? fps : fpsSmoothed * 0.92 + fps * 0.08;
     }
 
-    if (controls) {
+    if (!params.harness) {
       const dt = Math.min(frameMs, 100) / 1000;
-      const speed = (held.has("shift") ? 13 : 5.5) * dt;
-      world.camera.getWorldDirection(fwd);
-      fwd.y = 0;
-      fwd.normalize();
-      side.set(-fwd.z, 0, fwd.x);
-      const move = new Vector3();
-      if (held.has("w")) move.add(fwd);
-      if (held.has("s")) move.sub(fwd);
-      if (held.has("d")) move.add(side);
-      if (held.has("a")) move.sub(side);
-      if (move.lengthSq() > 0) {
-        move.normalize().multiplyScalar(speed);
-        world.camera.position.add(move);
-        controls.target.add(move);
+
+      // Camera-relative input on the ground plane.
+      world.camera.getWorldDirection(camFwd);
+      camFwd.y = 0;
+      camFwd.normalize();
+      move.set(0, 0);
+      const f = new Vector2(camFwd.x, camFwd.z);
+      const s = new Vector2(-camFwd.z, camFwd.x);
+      if (held.has("w") || held.has("arrowup")) move.add(f);
+      if (held.has("s") || held.has("arrowdown")) move.sub(f);
+      if (held.has("d") || held.has("arrowright")) move.add(s);
+      if (held.has("a") || held.has("arrowleft")) move.sub(s);
+      if (move.lengthSq() > 0) move.normalize();
+
+      world.bird.update(dt, move, {
+        peck: pressed.has(" "),
+        alert: pressed.has("f"),
+      });
+      pressed.clear();
+
+      if (freeMode && freeCam) {
+        freeCam.update();
+      } else if (followCam) {
+        followCam.update(dt, world.bird);
       }
-      controls.update();
+      hud.setInfo({ bird: world.bird.anim.state });
     }
 
     world.update(renderer);
