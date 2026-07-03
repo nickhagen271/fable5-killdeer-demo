@@ -1,3 +1,4 @@
+import { Vector3 } from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { installHooks } from "./core/hooks";
 import { readParams } from "./core/params";
@@ -5,7 +6,7 @@ import { Hud } from "./debug/hud";
 import { bootDone, bootMsg, failLoud } from "./render/diagnostics";
 import { initWebGPU } from "./render/initWebGPU";
 import { runComputeSelfTest } from "./render/selfTest";
-import { buildBootScene } from "./world/bootScene";
+import { buildPaintWorld } from "./world/field";
 
 async function main(): Promise<void> {
   const params = readParams(window.location.search);
@@ -19,24 +20,23 @@ async function main(): Promise<void> {
   hooks.adapter = adapter;
   hooks.backend = "WebGPU";
 
-  bootMsg("GPU compute self-test", 0.5);
+  bootMsg("GPU compute self-test", 0.4);
   const computeOk = await runComputeSelfTest(renderer);
   hooks.computeTest = computeOk ? "pass" : "fail";
   if (!computeOk) {
     failLoud("GPU compute self-test failed", [
       "A trivial compute kernel wrote a storage buffer and the readback did",
-      "not match. The stroke system in phase 1 is built on this path, so a",
-      "silent pass-through here would only defer the failure.",
+      "not match. The stroke system is built on this path.",
       "",
       `adapter: ${adapter.vendor} / ${adapter.architecture} ${adapter.description}`,
     ]);
   }
 
-  bootMsg("building scene", 0.75);
-  const boot = buildBootScene(params.seed, container.clientWidth / container.clientHeight);
+  bootMsg("placing strokes", 0.7);
+  const world = buildPaintWorld(params.seed, container.clientWidth / container.clientHeight);
 
-  let currentShot = params.shot && boot.applyShot(params.shot) ? params.shot : "vista";
-  boot.applyShot(currentShot);
+  let currentShot = params.shot && world.applyShot(params.shot) ? params.shot : "vista";
+  world.applyShot(currentShot);
 
   const hud = new Hud(
     document.body,
@@ -44,12 +44,12 @@ async function main(): Promise<void> {
     params.hud,
   );
 
-  const controls = params.harness ? null : new OrbitControls(boot.camera, renderer.domElement);
+  const controls = params.harness ? null : new OrbitControls(world.camera, renderer.domElement);
 
   const setShot = (name: string): boolean => {
-    if (!boot.applyShot(name)) return false;
+    if (!world.applyShot(name)) return false;
     currentShot = name;
-    const shot = boot.shots.find((s) => s.name === name);
+    const shot = world.shots.find((s) => s.name === name);
     if (controls && shot) {
       controls.target.copy(shot.target);
       controls.update();
@@ -57,16 +57,31 @@ async function main(): Promise<void> {
     hud.setInfo({ shot: name });
     return true;
   };
-  hooks.shots = boot.shots.map((s) => s.name);
+  hooks.shots = world.shots.map((s) => s.name);
   hooks.setShot = setShot;
+  hooks.setPose = (px, py, pz, tx, ty, tz): void => {
+    world.camera.position.set(px, py, pz);
+    world.camera.lookAt(tx, ty, tz);
+    if (controls) {
+      controls.target.set(tx, ty, tz);
+      controls.update();
+    }
+    hud.setInfo({ shot: "pose" });
+  };
+
+  // Ground-glide movement for the interactive coherence check: WASD moves
+  // camera and orbit target together, shift sprints at bird speed.
+  const held = new Set<string>();
+  window.addEventListener("keydown", (ev) => held.add(ev.key.toLowerCase()));
+  window.addEventListener("keyup", (ev) => held.delete(ev.key.toLowerCase()));
 
   if (controls) {
     controls.enableDamping = true;
-    controls.target.copy(boot.shots.find((s) => s.name === currentShot)?.target ?? controls.target);
+    controls.target.copy(world.shots.find((s) => s.name === currentShot)?.target ?? controls.target);
     controls.update();
     window.addEventListener("keydown", (ev) => {
       const idx = Number(ev.key) - 1;
-      const shot = boot.shots[idx];
+      const shot = world.shots[idx];
       if (shot) setShot(shot.name);
     });
   }
@@ -75,14 +90,16 @@ async function main(): Promise<void> {
     const w = container.clientWidth;
     const h = container.clientHeight;
     renderer.setSize(w, h);
-    boot.camera.aspect = w / h;
-    boot.camera.updateProjectionMatrix();
+    world.camera.aspect = w / h;
+    world.camera.updateProjectionMatrix();
   };
   window.addEventListener("resize", onResize);
   onResize();
 
   bootMsg("first frame", 0.95);
 
+  const fwd = new Vector3();
+  const side = new Vector3();
   let lastTime = performance.now();
   let fpsSmoothed = 0;
 
@@ -95,8 +112,28 @@ async function main(): Promise<void> {
       fpsSmoothed = fpsSmoothed === 0 ? fps : fpsSmoothed * 0.92 + fps * 0.08;
     }
 
-    controls?.update();
-    renderer.render(boot.scene, boot.camera);
+    if (controls) {
+      const dt = Math.min(frameMs, 100) / 1000;
+      const speed = (held.has("shift") ? 13 : 5.5) * dt;
+      world.camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      side.set(-fwd.z, 0, fwd.x);
+      const move = new Vector3();
+      if (held.has("w")) move.add(fwd);
+      if (held.has("s")) move.sub(fwd);
+      if (held.has("d")) move.add(side);
+      if (held.has("a")) move.sub(side);
+      if (move.lengthSq() > 0) {
+        move.normalize().multiplyScalar(speed);
+        world.camera.position.add(move);
+        controls.target.add(move);
+      }
+      controls.update();
+    }
+
+    world.update(renderer);
+    renderer.render(world.scene, world.camera);
 
     hooks.frame += 1;
     hud.update(

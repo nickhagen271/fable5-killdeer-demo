@@ -6,6 +6,98 @@ significant differences ranked by impact, fix the top three, re-shoot.
 
 ---
 
+## Phase 1 — 2026-07-02, seed 7
+
+Comparison set: `shots/phase-1/compare/`. Coherence evidence:
+`shots/phase-1/motion/report.json` (sequences regenerable via `npm run motion`).
+
+**What phase 1 built.** The paint core: ~106k world-anchored stroke ribbons in
+three LOD rings, placed by a GPU compute kernel deterministically from
+(world tile, slot, seed) and streamed as the camera moves; real ridge
+geometry along each stroke; analytic cross-section shading with ridge
+self-shadow and anisotropic wet-paint sheen; a bounded palette enforced by a
+generated value-quantized LUT; broken color from a shared color-script field;
+a canvas-tooth underpaint; stochastic distance erosion for LOD transitions.
+
+**The temporal-anchoring solution.** No screen-space stroke term exists
+anywhere in the pipeline — strokes are geometry fixed in world space, so
+camera motion reprojects them exactly like any surface. LOD transitions
+erode stroke-by-stroke, driven only by camera distance. Verification:
+
+- **Static boil check: PASS.** 12 frames at a fixed camera are
+  pixel-identical (mean and max consecutive diff exactly 0). Nothing boils.
+- **Orbit and sprint flipbooks:** strokes track the ground rigidly through a
+  full 360° orbit and an 8 m/s ground-level sprint; no screen-space crawl.
+  (`shots/phase-1/motion/*/index.html`.)
+
+### Top ten deltas (ranked by impact)
+
+1. **Stroke size too uniform within a ring.** References mix broad loaded
+   passages with small ticks in one passage. → **FIXED:** skewed
+   length/width distribution (many small, occasional 1.75× broad).
+2. **Far lit band read as hot glitter.** Sub-pixel sheen at distance was
+   sparkle, a shimmer risk. → **FIXED:** sheen fades out beyond ~85 m; it is
+   a near-field effect.
+3. **Value masses too gentle at vista scale.** → **FIXED (partially):**
+   broad-noise weight and contrast stretch raised; stroke value span widened
+   (0.14–0.71 → LUT). Desaturated vista (`shots/phase-1/value-vista.png`)
+   reads ~4 masses, still softer than the references — the true dark accent
+   mass arrives with phase-3 vegetation clumps rather than forcing mud now.
+4. **Sky is still the phase-0 placeholder.** No cloud brushwork; reads
+   airbrushed beside Ref 1. Phase 3–4 scope.
+5. **Edge control is uniform.** Every stroke edge equally crisp; no lost
+   edges, no dark accents. The phase-4 edge pass.
+6. **Poppy notes read as scattered confetti,** not clustered flower heads
+   with stems and mass. Real flowers are phase-3 geometry.
+7. **Flow field striping.** Some passages read as mechanical parallel
+   combing; needs a second cross-direction stroke population (phase 3
+   grass will largely supersede).
+8. **No inter-stroke shadowing.** Ridges self-shadow, but strokes don't
+   shade neighbors; thick passages lack pile-up occlusion.
+9. **Canvas tooth barely reads** in the committed shots (visible only inside
+   ~9 m and mostly covered by near strokes). Acceptable but thin passages
+   deserve more tooth once wind/thin areas exist.
+10. **Distant strokes lose directional read** into fine noise; references
+    dissolve warmer and chunkier. Tune L0 length/palette later.
+
+Top three actionable (1, 2, 3) fixed and re-shot; comparisons in
+`shots/phase-1/compare/` are the post-fix state.
+
+### Verification battery (phase 1)
+
+- **Coherence test: PASS** (static diff exactly 0; orbit/sprint rigid).
+- **Filter test: PASS by construction** — there is no post filter; paint
+  color comes from LUT samples and stroke geometry in the shading model.
+  There is no final grade yet to toggle (arrives phase 4).
+- **Value test: PASS with reservations** (see delta 3).
+- **Palette test: PASS structurally** — pigment color is LUT-sampled
+  (bounded rows × 6 value steps); relief lighting and sheen modulate value
+  multiplicatively but hue stays palette-locked. Broken color present on
+  ground (strokes + underpaint drift); sky family is a separate bounded set.
+- **Killdeer test: n/a** (phase 2).
+- **Contact sheet:** vista / ground / detail / macro / sky in
+  `shots/phase-1/`.
+
+### Self-score rubric (phase 1)
+
+| Row | Score | What raises this by 2 |
+|---|---|---|
+| Brushwork & impasto fidelity | 5 | Bristle-broken silhouettes + inter-stroke occlusion (8) |
+| Palette & value structure | 5 | A true dark vegetation mass (phase 3); warmer distant dissolve (10) |
+| Broken color | 6 | Cluster flower notes into heads (6); cross-direction accents (7) |
+| Edge control | 3 | The phase-4 lost-and-found edge pass |
+| **Stroke coherence in motion** | 8 | Anti-aliased stroke edges under MSAA at sub-pixel scale (residual aliasing shimmer on fine far strokes) |
+| Killdeer identity | — | Phase 2 |
+| Killdeer animation | — | Phase 2 |
+| Field & environment painting | 4 | Real grass/flower stroke populations and treeline (phase 3) |
+| Wind & motion | — | Phase 4 |
+| Composition & camera | 3 | A subject (the bird), framing tuned against Ref 1 |
+
+Cheapest +2s implemented this phase: sheen distance fade (2) and stroke size
+distribution (1). The remaining rows' raisers belong to phases 2–4.
+
+---
+
 ## Phase 0 — 2026-07-02, seed 7
 
 Comparison set: `shots/phase-0/compare/` (vista vs Ref 1, ground vs Ref 2,

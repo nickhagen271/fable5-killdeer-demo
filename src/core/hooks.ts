@@ -23,6 +23,8 @@ export interface PkdHooks {
   shots: readonly string[];
   /** Switch to a named shot. Returns false if the name is unknown. */
   setShot: (name: string) => boolean;
+  /** Place the camera exactly (position, look-at target) — for motion paths. */
+  setPose: (px: number, py: number, pz: number, tx: number, ty: number, tz: number) => void;
 }
 
 declare global {
@@ -42,6 +44,7 @@ export function installHooks(seed: number): PkdHooks {
     computeTest: "pending",
     shots: [],
     setShot: () => false,
+    setPose: () => undefined,
   };
   window.__PKD = hooks;
   return hooks;

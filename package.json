@@ -9,16 +9,19 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "shots": "tsx tools/shots.ts",
-    "compare": "tsx tools/compare.ts"
+    "compare": "tsx tools/compare.ts",
+    "motion": "tsx tools/motion.ts"
   },
   "dependencies": {
     "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.185.0",
     "@webgpu/types": "^0.1.60",
     "playwright-core": "^1.61.1",
+    "pngjs": "^7.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite": "^7.1.0"

@@ -8,3 +8,6 @@ shots/*
 !shots/phase-*/**
 *.log
 .claude/
+
+# motion sequences are regenerable (npm run motion); keep only the report
+shots/phase-*/motion/*/*.png

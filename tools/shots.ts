@@ -64,13 +64,14 @@ async function main(): Promise<void> {
       throw new Error(`no shots matched (available: ${state.shots.join(", ")})`);
     }
 
-    const canvas = page.locator("#app canvas");
     for (const name of shotNames) {
       const ok = await page.evaluate((n) => window.__PKD?.setShot(n) ?? false, name);
       if (!ok) throw new Error(`setShot(${name}) failed`);
       await settleFrames(page, 8);
       const file = join(outDir, `${name}.png`);
-      await canvas.screenshot({ path: file });
+      // Viewport clip, not element screenshot: the element path waits on rAF
+      // stability, which times out when SwiftShader frames are slow.
+      await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height } });
       console.log(`shot: ${file}`);
     }
 

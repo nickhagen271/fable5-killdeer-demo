@@ -24,6 +24,7 @@ const PAIRS: readonly Pair[] = [
   { shot: "ground", ref: "Ref 2.jpg", note: "low meadow read — broken color, poppy accents" },
   { shot: "sky", ref: "Ref 1.jpg", note: "sky and cloud handling" },
   { shot: "detail", ref: "Ref 4.jpg", note: "close ground passage — stroke and paint body" },
+  { shot: "macro", ref: "Ref 4.jpg", note: "impasto relief at grazing view — paint body and sheen" },
   { shot: "bird", ref: "KD1.png", note: "killdeer identity and paint language (phase 2+)" },
 ];
 

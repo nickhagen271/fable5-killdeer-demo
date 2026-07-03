@@ -1,0 +1,17 @@
+{
+  "phase": 1,
+  "seed": 7,
+  "size": "1280x720",
+  "capturedAt": "2026-07-02T21:47:30.334Z",
+  "backend": "WebGPU",
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "device": "",
+    "description": ""
+  },
+  "computeTest": "pass",
+  "shots": [
+    "vista"
+  ]
+}
