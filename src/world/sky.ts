@@ -20,10 +20,10 @@ import { HAZE } from "../paint/underpaint";
  */
 
 const SKY = {
-  zenith: 0x77a3cf,
+  zenith: 0x6b9cce,
   horizon: 0xece5cf,
-  cloud: 0xf7f2e3,
-  cloudShade: 0xc3c6cc,
+  cloud: 0xf8f3e4,
+  cloudShade: 0xbcc0cb,
   sunGlow: 0xffe9b8,
 } as const;
 
@@ -42,11 +42,11 @@ export function buildSkyDome(fields: PaintFields): Mesh {
   const c2 = mx_noise_float(vec3(cu.mul(2.7), seedZ.add(17.4))).mul(0.5).add(0.5);
   const c3 = mx_noise_float(vec3(cu.mul(6.3), seedZ.add(41.2))).mul(0.5).add(0.5);
   const cloudField = c1.mul(0.55).add(c2.mul(0.3)).add(c3.mul(0.15));
-  const horizonFade = smoothstep(0.02, 0.3, up);
-  const cloudMask = smoothstep(0.55, 0.68, cloudField).mul(horizonFade);
-  const cloudBody = mix(color(SKY.cloudShade), color(SKY.cloud), smoothstep(0.56, 0.78, cloudField));
-  sky = mix(sky, cloudBody, cloudMask.mul(0.95));
-  sky = mix(sky, color(SKY.cloud), smoothstep(0.42, 0.55, cloudField).mul(horizonFade).mul(0.12));
+  const horizonFade = smoothstep(0.02, 0.26, up);
+  const cloudMask = smoothstep(0.48, 0.6, cloudField).mul(horizonFade);
+  const cloudBody = mix(color(SKY.cloudShade), color(SKY.cloud), smoothstep(0.52, 0.74, cloudField));
+  sky = mix(sky, cloudBody, cloudMask.mul(0.97));
+  sky = mix(sky, color(SKY.cloud), smoothstep(0.38, 0.5, cloudField).mul(horizonFade).mul(0.14));
 
   // Warm sun glow, high and hazy.
   const g = clamp(dir.dot(vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z)), 0.0, 1.0);

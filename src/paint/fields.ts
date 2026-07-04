@@ -95,8 +95,8 @@ export class PaintFields {
     const open = float(1.0).sub(shadow);
     const rose = smoothstep(0.62, 0.8, flower).mul(flowerDrift).mul(open);
     const fleckGate = smoothstep(0.8, 0.88, flower.mul(flowerDrift.mul(0.5).add(0.6))).mul(open);
-    idx = select(rose.mul(0.16).greaterThan(rFlower), float(6.0), idx);
-    idx = select(fleckGate.mul(0.5).greaterThan(rFlower), float(7.0), idx);
+    idx = select(rose.mul(0.22).greaterThan(rFlower), float(6.0), idx);
+    idx = select(fleckGate.mul(0.75).greaterThan(rFlower), float(7.0), idx);
 
     return idx;
   }

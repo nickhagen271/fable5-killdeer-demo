@@ -83,7 +83,7 @@ export interface GrassLODConfig extends TileStream {
 }
 
 export const GRASS_LODS: readonly GrassLODConfig[] = [
-  { name: "grass-near", tileSize: 4, grid: 9, perTile: 560, height: 0.13, width: 0.05, rIn: 0, rOut: 10 },
+  { name: "grass-near", tileSize: 4, grid: 9, perTile: 640, height: 0.13, width: 0.05, rIn: 0, rOut: 10 },
   { name: "grass-mid", tileSize: 12, grid: 7, perTile: 340, height: 0.22, width: 0.09, rIn: 7, rOut: 24 },
 ];
 

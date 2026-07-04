@@ -53,12 +53,27 @@ function planTrees(seed: number): TreeStroke[] {
   const rng = new Rng(seed).fork("treeline");
   const strokes: TreeStroke[] = [];
 
-  const clusterCount = 14;
-  for (let c = 0; c < clusterCount; c++) {
-    const az = (c / clusterCount) * Math.PI * 2 + rng.range(-0.14, 0.14);
+  // Anchor clusters around the ring, most growing companion masses so the
+  // horizon reads as a broken band of groves, not isolated lollipops.
+  interface Site {
+    az: number;
+    radius: number;
+  }
+  const sites: Site[] = [];
+  const anchorCount = 15;
+  for (let c = 0; c < anchorCount; c++) {
+    const az = (c / anchorCount) * Math.PI * 2 + rng.range(-0.12, 0.12);
     const radius = rng.range(175, 235);
-    const cx = Math.sin(az) * radius;
-    const cz = Math.cos(az) * radius;
+    sites.push({ az, radius });
+    const companions = rng.next() < 0.6 ? (rng.next() < 0.35 ? 2 : 1) : 0;
+    for (let k = 0; k < companions; k++) {
+      sites.push({ az: az + rng.range(0.035, 0.09) * (rng.next() < 0.5 ? -1 : 1), radius: radius + rng.range(-14, 14) });
+    }
+  }
+
+  for (const site of sites) {
+    const cx = Math.sin(site.az) * site.radius;
+    const cz = Math.cos(site.az) * site.radius;
     const poplar = rng.next() < 0.35;
 
     const height = poplar ? rng.range(14, 22) : rng.range(9, 14);
