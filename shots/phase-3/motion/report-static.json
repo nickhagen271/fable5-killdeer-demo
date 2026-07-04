@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-07-04T15:22:32.282Z",
+  "seed": 7,
+  "size": "960x540",
+  "boilCheckPass": true,
+  "paths": {
+    "static": {
+      "frames": 12,
+      "meanDiff": 0,
+      "maxDiff": 0
+    }
+  }
+}
