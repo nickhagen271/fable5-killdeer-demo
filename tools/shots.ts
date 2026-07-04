@@ -71,7 +71,7 @@ async function main(): Promise<void> {
       const file = join(outDir, `${name}.png`);
       // Viewport clip, not element screenshot: the element path waits on rAF
       // stability, which times out when SwiftShader frames are slow.
-      await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height } });
+      await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height }, timeout: 120_000 });
       console.log(`shot: ${file}`);
     }
 

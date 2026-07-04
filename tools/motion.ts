@@ -178,7 +178,7 @@ async function main(): Promise<void> {
         }
         await settleFrames(page, 2);
         const file = join(dir, `f${String(i).padStart(3, "0")}.png`);
-        await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height } });
+        await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height }, timeout: 120_000 });
         files.push(file);
       }
 

@@ -30,6 +30,10 @@ function approach(current: number, target: number, rate: number, dt: number): nu
 
 export class BirdAnim {
   state: BirdState = "idle";
+  /** Fired once per peck at bill-to-ground contact (foraging hook). */
+  onPeckContact: (() => void) | null = null;
+  private contactFired = false;
+  private gulp = false;
 
   private readonly pose: Pose = { ...REST };
   private readonly rng: Rng;
@@ -54,6 +58,11 @@ export class BirdAnim {
     if (this.state !== "peck") this.enter("peck");
   }
 
+  /** A peck connected with food: after it finishes, a head-up gulp beat. */
+  notifyEat(): void {
+    this.gulp = true;
+  }
+
   requestAlert(): void {
     if (this.state === "idle") this.enter("alert");
   }
@@ -61,6 +70,7 @@ export class BirdAnim {
   private enter(state: BirdState): void {
     this.state = state;
     this.stateT = 0;
+    if (state === "peck") this.contactFired = false;
   }
 
   update(dt: number, speed01: number): void {
@@ -90,7 +100,22 @@ export class BirdAnim {
         this.enter("preen");
       }
     }
-    if (this.state === "peck" && this.stateT > 0.62) this.enter(moving ? "run" : "idle");
+    // Bill meets the ground as the dip bottoms out.
+    if (this.state === "peck" && !this.contactFired && this.stateT >= 0.19) {
+      this.contactFired = true;
+      this.onPeckContact?.();
+    }
+    if (this.state === "peck" && this.stateT > 0.62) {
+      if (moving) {
+        this.enter("run");
+        this.gulp = false;
+      } else if (this.gulp) {
+        this.gulp = false;
+        this.enter("alert"); // the swallow-and-scan beat after a catch
+      } else {
+        this.enter("idle");
+      }
+    }
     if (this.state === "alert" && this.stateT > this.alertHold) this.enter("idle");
     if (this.state === "preen" && this.stateT > 1.6) this.enter("idle");
 

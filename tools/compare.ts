@@ -25,6 +25,8 @@ const PAIRS: readonly Pair[] = [
   { shot: "sky", ref: "Ref 1.jpg", note: "sky and cloud handling" },
   { shot: "detail", ref: "Ref 4.jpg", note: "close ground passage — stroke and paint body" },
   { shot: "macro", ref: "Ref 4.jpg", note: "impasto relief at grazing view — paint body and sheen" },
+  { shot: "meadow", ref: "Ref 2.jpg", note: "bird-height meadow — grass tufts, poppy drifts" },
+  { shot: "treeline", ref: "Ref 1.jpg", note: "distant tree masses dissolving into the haze" },
   { shot: "bird_idle", ref: "KD3.png", note: "killdeer identity at rest — bands, face, posture" },
   { shot: "bird_run", ref: "KD1.png", note: "killdeer running — gait, lean, markings in motion" },
   { shot: "bird_alert", ref: "KD2.png", note: "alert stance vs reference paint language" },

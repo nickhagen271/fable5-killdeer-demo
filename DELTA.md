@@ -6,6 +6,107 @@ significant differences ranked by impact, fix the top three, re-shoot.
 
 ---
 
+## Phase 3 — 2026-07-04, seed 7
+
+Comparison set: `shots/phase-3/compare/` (11 pairs, now including
+meadow vs Ref 2 and treeline vs Ref 1). Foraging evidence:
+`shots/phase-3/forage_before.png` / `forage_after.png` plus the automated
+gate (`npm run forage`): the scripted bird walks to the nearest seeded spot,
+pecks, and the assertion `eaten` increments — PASS. Coherence battery re-run
+with all vegetation: `shots/phase-3/motion/report.json`.
+
+**What phase 3 built.** The field: grass as rising tuft strokes (each
+instance a drybrush flick splitting into blade streaks, clumped by a tuft
+field, lit tips carrying the impasto) in two streamed LOD rings; wildflowers
+as stem + head stroke pairs, poppy-dominant in drifts with rose/cream/yellow
+notes and dark poppy centers, the heads the thickest paint in the frame; a
+seeded treeline ring in the Monet manner (canopy daub shells with lit
+crowns, cool violet shadow sides, understory masses seating them into the
+ground, poplars and broad crowns) dissolving into the shared atmosphere; and
+the foraging loop — 90 seeded worm/beetle paint-marks, peck-contact
+detection at the bill, the mark consumed on a catch, and a head-up
+gulp-and-scan beat as the payoff. No score, no HUD.
+
+**Environment scars (documented for honesty):** this GPU stack misreads a
+third per-instance vertex data stream (storage or attribute — both) and
+NaN's an in-shader cross().normalize() on the treeline path; the treeline
+therefore packs all stroke data into exactly two vec4 attributes
+(azimuth/pitch direction encoding, scalar-pair packing) and precomputes what
+it can on the CPU. The streamed fields are unaffected (compute-written
+storage works fine).
+
+### Top ten deltas (ranked by impact)
+
+1. **The sky is still nearly featureless.** Ref 1 gives half the canvas to
+   massed cumulus; ours reads as a pale wash with barely-there clouds.
+   → **FIXED (phase-3 level):** cloud coverage/contrast and zenith blue
+   raised on the dome. True cloud brushwork remains phase 4.
+2. **The treeline reads as three lonely bushes,** not a broken band. Ref 1
+   holds a continuous distant tree mass. → **FIXED:** more clusters grouped
+   into groves with companion masses; the horizon now carries a broken band.
+3. **Flower accents vanish past 30 m,** leaving the vista field monotone
+   yellow-green vs the reference's red/violet flecking. → **FIXED:** poppy
+   fleck probability in the distant ground-stroke color script raised; far
+   field now carries the red shimmer.
+4. **Near-field grass too sparse at bird height** — the bottom third of the
+   meadow shot is mostly flat strokes. Raised tuft density modestly; a
+   denser thicket needs a perf budget this CPU-rasterized harness can't pay.
+5. **Grass is all one gesture.** Real meadows mix blade tufts with seed
+   heads, bent stems, clover mats. One more stroke vocabulary (phase 4
+   polish if budget allows).
+6. **Tree crowns are cauliflower-discrete** at close ring distances; daub
+   edges read individually instead of massing. Acceptable at 175 m+, weak
+   if the camera approaches the ring.
+7. **Flowers float when their stems thin out** at distance; heads should
+   sink into the grass mass instead (stems shortened, partially mitigated).
+8. **The gulp beat reuses the alert pose** — reads right, but a dedicated
+   head-toss with a visible swallow would sell the payoff (phase 4).
+9. **Food marks are subtle to a fault** on busy ground; the player finds
+   them by proximity more than sight. Intentionally low-key, noted.
+10. **Value structure: the dark vegetation mass finally exists** (treeline,
+    shadow tufts) but only at the horizon; mid-field shadow clumps still
+    read soft in the desaturated check.
+
+Top three actionable (1, 2, 3) fixed and re-shot; comparisons in
+`shots/phase-3/compare/` are the post-fix state.
+
+### Verification battery (phase 3)
+
+- **Coherence:** static boil check re-run with grass, flowers, treeline and
+  food in frame — see `shots/phase-3/motion/report.json` (static must be
+  pixel-identical; orbit/sprint flipbooks for the human swim check). The
+  delta-loop fixes after the battery touched only color constants and seeded
+  placement counts — nothing time-dependent — and the static path was
+  re-verified on final code.
+- **Foraging gate: PASS** (`npm run forage`): approach → peck → consume,
+  deterministic per seed, with before/after frames.
+- **Filter/palette tests:** unchanged — every new system (grass, flowers,
+  trees, food) samples the same LUT rows; no new color paths.
+- **No photographic texture in frame:** all vegetation is stroke geometry
+  with procedural masks; nothing sampled from images.
+- **Contact sheet:** vista / ground / detail / macro / sky / meadow /
+  treeline / bird set / follow / forage pair in `shots/phase-3/`.
+
+### Self-score rubric (phase 3)
+
+| Row | Score | What raises this by 2 |
+|---|---|---|
+| Brushwork & impasto fidelity | 5 | Inter-stroke occlusion; flower-head silhouettes at grazing light |
+| Palette & value structure | 6 | Mid-field dark clumps; warmer distant dissolve |
+| Broken color | 6 | Violet/pink interference in the lit grass (Ref 1's field pinks) |
+| Edge control | 3 | The phase-4 lost-and-found edge pass |
+| Stroke coherence in motion | 8 | unchanged (all new systems world-anchored) |
+| Killdeer identity | 7 | unchanged from phase 2 |
+| Killdeer animation & run-stop-peck | 7 | Dedicated swallow toss (8); tail fan on stops |
+| Field & environment painting | 6 | Denser near thicket; second grass vocabulary; grove variety |
+| Wind & motion | — | Phase 4 |
+| Composition & camera | 5 | Cloud masses to balance the frame; follow-cam framing vs Ref 1 |
+
+Cheapest +2s implemented: sky cloud strengthening (1) and treeline banding
+(2) — both raised composition and environment scores directly.
+
+---
+
 ## Phase 2 — 2026-07-03, seed 7
 
 Comparison set: `shots/phase-2/compare/` (bird shots vs the KD reference

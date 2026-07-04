@@ -12,6 +12,7 @@ import {
   texture,
   vec2,
   vec4,
+  vertexStage,
 } from "three/tsl";
 import type { PaintFields } from "./fields";
 import type { PaletteLUT } from "./palette";
@@ -33,7 +34,11 @@ export function buildUnderpaint(fields: PaintFields, lut: PaletteLUT): NodeMater
 
   material.fragmentNode = Fn(() => {
     const p = positionWorld.xz;
-    const lit = fields.litness(p);
+    // The field stack (many noise octaves) is evaluated per-vertex on the
+    // subdivided ground plane and interpolated; only the fine grain and the
+    // canvas tooth stay per-pixel. The underpaint is a broad toned wash —
+    // vertex-rate light is exactly as soft as it should be.
+    const lit = vertexStage(fields.litness(p));
 
     // Canvas tooth: a world-anchored weave, visible only near the camera
     // where the paint is thin. Faded by distance before it can alias.
@@ -50,11 +55,11 @@ export function buildUnderpaint(fields: PaintFields, lut: PaletteLUT): NodeMater
 
     const row = (i: number): ReturnType<typeof texture> =>
       texture(lut.texture, vec2(value, (i + 0.5) / lut.rows));
-    const drift = fields.n01(p, 0.045, 0.0);
+    const drift = vertexStage(fields.n01(p, 0.045, 0.0));
     const grain = fields.n01(p, 0.9, 77.7);
     let paint = mix(row(0).rgb, row(3).rgb, smoothstep(0.3, 0.7, grain).mul(0.6));
     paint = mix(paint, row(9).rgb, smoothstep(0.5, 0.9, drift).mul(0.55));
-    paint = mix(paint, row(4).rgb, fields.shadowMask(p).mul(0.65));
+    paint = mix(paint, row(4).rgb, vertexStage(fields.shadowMask(p)).mul(0.65));
 
     // Distance value structure: cool grey-violet far band, then warm haze.
     const farBand = smoothstep(120.0, 320.0, d);

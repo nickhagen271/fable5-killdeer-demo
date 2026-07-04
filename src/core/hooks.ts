@@ -32,6 +32,13 @@ export interface PkdHooks {
    * given the same call sequence, so behavior can be captured headless.
    */
   birdStep: (dt: number, moveX: number, moveZ: number, peck: boolean) => void;
+  /** Foraging state relative to the current bird position (harness). */
+  foodInfo: () => {
+    total: number;
+    eaten: number;
+    bird: readonly [number, number];
+    nearest: readonly [number, number] | null;
+  };
 }
 
 declare global {
@@ -54,6 +61,7 @@ export function installHooks(seed: number): PkdHooks {
     setPose: () => undefined,
     birdPreset: () => false,
     birdStep: () => undefined,
+    foodInfo: () => ({ total: 0, eaten: 0, bird: [0, 0], nearest: null }),
   };
   window.__PKD = hooks;
   return hooks;

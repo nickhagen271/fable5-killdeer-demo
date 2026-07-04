@@ -10,7 +10,8 @@
     "typecheck": "tsc",
     "shots": "tsx tools/shots.ts",
     "compare": "tsx tools/compare.ts",
-    "motion": "tsx tools/motion.ts"
+    "motion": "tsx tools/motion.ts",
+    "forage": "tsx tools/forage.ts"
   },
   "dependencies": {
     "three": "^0.185.1"

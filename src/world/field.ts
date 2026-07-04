@@ -5,7 +5,10 @@ import { PaintFields } from "../paint/fields";
 import { buildGroundLUT } from "../paint/palette";
 import { STROKE_LODS, StrokeLOD } from "../paint/strokes";
 import { buildUnderpaint } from "../paint/underpaint";
+import { FlowerField, GRASS_LODS, GrassLOD } from "../paint/vegetation";
+import { FoodSystem } from "./food";
 import { buildSkyDome } from "./sky";
+import { buildTreeline } from "./treeline";
 
 /**
  * The world: one open sunlit ground surface painted with world-anchored
@@ -26,6 +29,8 @@ const SHOTS: readonly Shot[] = [
   { name: "detail", position: new Vector3(0, 1.15, 2.6), target: new Vector3(0.5, 0, -1.6) },
   { name: "macro", position: new Vector3(0.3, 0.5, 1.1), target: new Vector3(0.05, 0.06, -0.9) },
   { name: "sky", position: new Vector3(0, 2, 12), target: new Vector3(0, 26, -70) },
+  { name: "meadow", position: new Vector3(1.2, 0.38, 4.2), target: new Vector3(-0.6, 0.22, -5) },
+  { name: "treeline", position: new Vector3(0, 2.4, 30), target: new Vector3(0, 7, -190) },
   {
     name: "bird_idle",
     position: new Vector3(0.34, 0.25, 0.42),
@@ -64,6 +69,7 @@ export interface PaintWorld {
   readonly shots: readonly Shot[];
   readonly strokeCount: number;
   readonly bird: Bird;
+  readonly food: FoodSystem;
   applyShot(name: string): boolean;
   /** Per-frame: stream stroke tiles around the camera. */
   update(renderer: WebGPURenderer): void;
@@ -74,11 +80,13 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
   const lut = buildGroundLUT();
   const scene = new Scene();
 
-  const ground = new Mesh(new PlaneGeometry(900, 900), buildUnderpaint(fields, lut));
+  // Subdivided so the underpaint's field noise can run at vertex rate.
+  const ground = new Mesh(new PlaneGeometry(900, 900, 300, 300), buildUnderpaint(fields, lut));
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
   scene.add(buildSkyDome(fields));
+  scene.add(buildTreeline(seed, lut));
 
   const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut));
   let strokeCount = 0;
@@ -87,8 +95,29 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     strokeCount += lod.mesh.count;
   }
 
+  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut));
+  for (const g of grass) {
+    scene.add(g.mesh);
+    strokeCount += g.mesh.count;
+  }
+  const flowers = new FlowerField(fields, lut);
+  scene.add(flowers.stems);
+  scene.add(flowers.heads);
+  strokeCount += flowers.stems.count * 2;
+
   const bird = new Bird(lut, seed);
   scene.add(bird.root);
+
+  const food = new FoodSystem(seed, lut);
+  scene.add(food.mesh);
+
+  // The forage connect: when the bill meets the ground, the nearest live
+  // spot within reach is taken, and the bird gets its gulp-and-scan beat.
+  bird.anim.onPeckContact = (): void => {
+    const bx = bird.position.x + Math.sin(bird.heading) * 0.14;
+    const bz = bird.position.z + Math.cos(bird.heading) * 0.14;
+    if (food.tryEat(bx, bz, 0.15)) bird.anim.notifyEat();
+  };
 
   const camera = new PerspectiveCamera(45, aspect, 0.05, 1500);
 
@@ -104,7 +133,9 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
 
   const update = (renderer: WebGPURenderer): void => {
     for (const lod of lods) lod.update(renderer, camera.position.x, camera.position.z);
+    for (const g of grass) g.update(renderer, camera.position.x, camera.position.z);
+    flowers.update(renderer, camera.position.x, camera.position.z);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, bird, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, food, applyShot, update };
 }

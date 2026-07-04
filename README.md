@@ -4,16 +4,18 @@ A hyper-stylized impasto web game proof of concept. You are the bird. The full
 brief lives in [PROJECT_Killdeer_Prototype_v1.md](PROJECT_Killdeer_Prototype_v1.md);
 the running reference-delta log in [DELTA.md](DELTA.md).
 
-**Status: phase 2 complete** — the killdeer. A fully procedural bird (mesh
-sculpted in code, markings painted in part-local space through the shared
-palette LUT: both black breast bands, white collar, face pattern, orange
-eye ring, rust rump), a procedural animation state machine (run,
-run-stop-peck, idle with weight shifts and preens, alert freeze), player
-control with plover locomotion, and a damped third-person follow camera.
-Phase 1 delivered the paint core: ~106k world-anchored impasto stroke
-ribbons with the coherence gate passing (pixel-identical static frames,
-ground-locked orbit/sprint). Phase 0 delivered the scaffold, strict WebGPU
-init, HUD, shot harness, and comparison tooling.
+**Status: phase 3 complete** — the field. Grass as rising tuft strokes
+(streamed LOD rings, lit tips carrying the impasto), wildflowers with
+poppy-dominant impasto heads, a seeded Monet treeline with understory and
+poplars dissolving into the haze, and the foraging loop: seeded worm/beetle
+paint-marks, peck-contact detection, the mark consumed on a catch, a head-up
+gulp beat as the payoff (`npm run forage` asserts the connect end-to-end).
+Phase 2 delivered the procedural killdeer (both breast bands, plover
+run-stop-peck state machine, follow camera). Phase 1 delivered the paint
+core: world-anchored impasto stroke ribbons with the coherence gate passing
+(pixel-identical static frames, ground-locked orbit/sprint). Phase 0
+delivered the scaffold, strict WebGPU init, HUD, and the harness tooling.
+Remaining: phase 4 — wind, drifting clouds, edge control, the final grade.
 
 ## Run
 
@@ -28,11 +30,12 @@ npm run dev        # http://localhost:5173 — requires a WebGPU browser
 ## Harness
 
 ```sh
-npm run shots   -- --phase 2 --seed 7   # headless WebGPU screenshots → shots/phase-2/
-npm run compare -- --phase 2            # side-by-sides vs /reference → shots/phase-2/compare/
-npm run motion  -- --seed 7 --phase 2   # coherence battery: static boil check (must be
+npm run shots   -- --phase 3 --seed 7   # headless WebGPU screenshots → shots/phase-3/
+npm run compare -- --phase 3            # side-by-sides vs /reference → shots/phase-3/compare/
+npm run motion  -- --seed 7 --phase 3   # coherence battery: static boil check (must be
                                         # pixel-identical), orbit + sprint flipbooks, plus
                                         # bird sequences: --paths gait,forage
+npm run forage  -- --seed 7             # foraging gate: approach → peck → consume, asserted
 npm run typecheck
 npm run build
 ```
@@ -44,11 +47,12 @@ works on GPU-less machines; the flag recipe is in `tools/harness.ts`.
 
 ```
 src/paint/    the paint system: palette LUT, shared fields (light/flow/color
-              script), stroke compute + impasto material, underpaint
+              script), stroke compute + impasto material, vegetation
+              (grass tufts, flowers), underpaint
 src/bird/     the killdeer: procedural mesh + markings, paint material,
               animation state machine, player bird
 src/render/   WebGPU init, diagnostics, compute self-test
-src/world/    field assembly, sky dome, follow camera
+src/world/    field assembly, sky dome, treeline, food spots, follow camera
 src/debug/    HUD
 src/core/     params, seeded RNG, harness hooks
 tools/        shot / comparison / motion-coherence harness (Playwright)

@@ -24,6 +24,7 @@ import {
   vec2,
   vec3,
   vec4,
+  vertexStage,
   cameraPosition,
   positionWorld,
 } from "three/tsl";
@@ -63,8 +64,8 @@ export interface StrokeLODConfig {
 
 export const STROKE_LODS: readonly StrokeLODConfig[] = [
   { name: "far", tileSize: 32, grid: 11, strokesPerTile: 340, length: 3.6, width: 0.68, rIn: 38, rOut: 165, yBase: 0.004 },
-  { name: "mid", tileSize: 16, grid: 7, strokesPerTile: 560, length: 1.15, width: 0.3, rIn: 10, rOut: 48, yBase: 0.018 },
-  { name: "near", tileSize: 4, grid: 9, strokesPerTile: 460, length: 0.5, width: 0.075, rIn: 0, rOut: 13, yBase: 0.032 },
+  { name: "mid", tileSize: 16, grid: 7, strokesPerTile: 500, length: 1.15, width: 0.3, rIn: 10, rOut: 48, yBase: 0.018 },
+  { name: "near", tileSize: 4, grid: 9, strokesPerTile: 340, length: 0.5, width: 0.075, rIn: 0, rOut: 13, yBase: 0.032 },
 ];
 
 const SUN = vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z);
@@ -201,7 +202,9 @@ export class StrokeLOD {
       const bristleSlope = bristle.sub(0.5).mul(hAmp).mul(0.55);
       const n = normalize(vec3(0.0, 1.0, 0.0).add(side3.mul(slope.add(bristleSlope))));
 
-      const lit = fields.litness(positionWorld.xz);
+      // Light field evaluated per-vertex and interpolated — the noise stack
+      // is far too heavy per fragment, and a stroke-scale gradient is enough.
+      const lit = vertexStage(fields.litness(positionWorld.xz));
       const form = clamp(vec3(0.0, 1.0, 0.0).dot(SUN), 0.0, 1.0).mul(0.4).add(0.6);
 
       // Ridge self-shadow: the trough on the lee side of the sun darkens.

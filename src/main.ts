@@ -74,6 +74,17 @@ async function main(): Promise<void> {
     scriptMove.set(moveX, moveZ);
     world.bird.update(dt, scriptMove, { peck, alert: false });
   };
+  hooks.foodInfo = () => {
+    const bx = world.bird.position.x;
+    const bz = world.bird.position.z;
+    const near = world.food.nearest(bx, bz);
+    return {
+      total: world.food.total,
+      eaten: world.food.eaten,
+      bird: [bx, bz] as const,
+      nearest: near ? ([near.x, near.z] as const) : null,
+    };
+  };
 
   const held = new Set<string>();
   const pressed = new Set<string>();
