@@ -1,0 +1,17 @@
+{
+  "phase": 4,
+  "seed": 7,
+  "size": "1280x720",
+  "capturedAt": "2026-07-05T14:43:48.836Z",
+  "backend": "WebGPU",
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "device": "",
+    "description": ""
+  },
+  "computeTest": "pass",
+  "shots": [
+    "sky"
+  ]
+}
