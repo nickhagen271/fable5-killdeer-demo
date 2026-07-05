@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-07-05T18:14:25.262Z",
+  "seed": 7,
+  "size": "960x540",
+  "boilCheckPass": true,
+  "paths": {
+    "static": {
+      "frames": 12,
+      "meanDiff": 0,
+      "maxDiff": 0
+    },
+    "orbit": {
+      "frames": 36,
+      "meanDiff": 13.42816087962963,
+      "maxDiff": 14.179393647119342
+    },
+    "sprint": {
+      "frames": 36,
+      "meanDiff": 7.231988352439743,
+      "maxDiff": 8.413885673868313
+    },
+    "gait": {
+      "frames": 16,
+      "meanDiff": 0.31046377743484227,
+      "maxDiff": 0.42476273148148147
+    },
+    "forage": {
+      "frames": 36,
+      "meanDiff": 10.114360945767194,
+      "maxDiff": 13.238958976337448
+    },
+    "wind": {
+      "frames": 36,
+      "meanDiff": 0.13653540196942973,
+      "maxDiff": 0.14586291152263375
+    }
+  }
+}
