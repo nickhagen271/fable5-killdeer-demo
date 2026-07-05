@@ -31,6 +31,7 @@ import {
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
 import { PaintFields, SUN_DIR, type FloatExpr } from "./fields";
 import type { PaletteLUT } from "./palette";
+import type { WindField } from "./wind";
 
 /**
  * Upright vegetation strokes: grass blades and wildflowers. Same contract as
@@ -91,7 +92,7 @@ export class GrassLOD {
   readonly mesh: InstancedMesh;
   private readonly streamer: Streamer;
 
-  constructor(cfg: GrassLODConfig, fields: PaintFields, lut: PaletteLUT) {
+  constructor(cfg: GrassLODConfig, fields: PaintFields, lut: PaletteLUT, wind: WindField) {
     const slots = cfg.grid * cfg.grid * cfg.perTile;
     const half = (cfg.grid - 1) / 2;
 
@@ -177,10 +178,17 @@ export class GrassLOD {
 
       const taper = float(1.0).sub(t.mul(0.72));
       const bend = t.mul(t).mul(lean).mul(height);
+      // Wind: the blade bows downwind, quadratic in t so the root stays
+      // planted. Amplitude scales with blade height — tall blades ride the
+      // gusts, short tufts barely stir. Time is frozen in harness mode.
+      const windDisp = wind
+        .displacement(vec2(recA.x, recA.y), rand, 0.16)
+        .mul(t.mul(t).mul(height.mul(3.2).min(1.2)));
       const pos = vec3(recA.x, 0.02, recA.y)
         .add(side.mul(across.mul(width).mul(taper)))
         .add(leanDir.mul(bend))
-        .add(vec3(0.0, t.mul(height).mul(float(1.0).sub(lean.mul(bend).mul(0.3))), 0.0));
+        .add(vec3(0.0, t.mul(height).mul(float(1.0).sub(lean.mul(bend).mul(0.3))), 0.0))
+        .add(windDisp);
       return pos;
     })();
 
@@ -274,7 +282,7 @@ export class FlowerField {
   readonly heads: InstancedMesh;
   private readonly streamer: Streamer;
 
-  constructor(fields: PaintFields, lut: PaletteLUT) {
+  constructor(fields: PaintFields, lut: PaletteLUT, wind: WindField) {
     const cfg = FLOWER_CFG;
     const slots = cfg.grid * cfg.grid * cfg.perTile;
     const half = (cfg.grid - 1) / 2;
@@ -344,10 +352,14 @@ export class FlowerField {
       const side = vec3(cos(az), 0.0, sin(az));
       const leanDir = vec3(cos(sA.w), 0.0, sin(sA.w));
       const bend = t.mul(t).mul(0.18).mul(stemH);
+      const windDisp = wind
+        .displacement(vec2(sA.x, sA.y), rand, 0.2)
+        .mul(t.mul(t).mul(stemH.mul(4.0).min(1.0)));
       return vec3(sA.x, 0.02, sA.y)
         .add(side.mul(across.mul(0.011)))
         .add(leanDir.mul(bend))
-        .add(vec3(0.0, t.mul(stemH), 0.0));
+        .add(vec3(0.0, t.mul(stemH), 0.0))
+        .add(windDisp);
     })();
 
     const svB = varying(sB);
@@ -379,14 +391,20 @@ export class FlowerField {
       const tilt = hB.y;
 
       // A daub plane tilted off vertical, facing sunward-ish; its center sits
-      // at the stem top.
+      // at the stem top and rides the stem's wind sway (with a touch of
+      // overshoot — the head is the pendulum's weight).
       const facing = vec3(cos(az), 0.0, sin(az));
       const side = vec3(sin(az), 0.0, cos(az).negate());
       const upT = mix(vec3(0.0, 1.0, 0.0), facing, tilt.mul(0.55));
+      const windDisp = wind
+        .displacement(vec2(hA.x, hA.y), hB.w, 0.2)
+        .mul(stemH.mul(4.0).min(1.0))
+        .mul(1.12);
       return vec3(hA.x, 0.015, hA.y)
         .add(vec3(0.0, stemH, 0.0))
         .add(side.mul(u.mul(size).mul(1.5)))
-        .add(normalize(upT).mul(v.mul(size)));
+        .add(normalize(upT).mul(v.mul(size)))
+        .add(windDisp);
     })();
 
     headMat.fragmentNode = Fn(() => {

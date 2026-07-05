@@ -125,13 +125,17 @@ async function main(): Promise<void> {
 
     // Camera paths test stroke coherence; bird paths test the animation.
     // gait: run-cycle sweep at a fixed side camera. forage: a scripted
-    // run-stop-peck-run behavior pass stepped at 30 fps.
+    // run-stop-peck-run behavior pass stepped at 30 fps. wind: fixed camera,
+    // wind time advancing 1/30 s per frame — the painting breathing; frame
+    // diffs must be small (gentle sway) and the flipbook is the human check
+    // that motion reads as brushwork in the wind, not geometry noise.
     const paths: Record<string, (i: number, n: number) => Pose | null> = {
       static: () => staticPose(),
       orbit: orbitPose,
       sprint: sprintPose,
       gait: () => null,
       forage: () => null,
+      wind: () => null,
     };
 
     const active = args.paths ? Object.entries(paths).filter(([n]) => args.paths?.includes(n)) : Object.entries(paths);
@@ -145,8 +149,14 @@ async function main(): Promise<void> {
       if (name === "gait") {
         await page.evaluate(() => window.__PKD?.setPose(0.55, 0.22, 0.06, 0, 0.14, 0.02));
       }
+      if (name === "wind") {
+        await page.evaluate(() => window.__PKD?.setPose(1.2, 0.38, 4.2, -0.6, 0.22, -5));
+      }
 
       for (let i = 0; i < frameCount; i++) {
+        if (name === "wind") {
+          await page.evaluate((t) => window.__PKD?.setWindTime(t), i / 30);
+        }
         if (name === "gait") {
           await page.evaluate((ph) => window.__PKD?.birdPreset("run", ph), i / frameCount);
         } else if (name === "forage") {
@@ -167,7 +177,7 @@ async function main(): Promise<void> {
             ([z]) => window.__PKD?.setPose(1.05, 0.34, z + 0.1, 0, 0.16, z),
             [zEst] as const,
           );
-        } else {
+        } else if (name !== "wind") {
           const pose = poseFn(i, frameCount);
           if (pose) {
             await page.evaluate(

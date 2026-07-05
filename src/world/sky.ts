@@ -12,22 +12,24 @@ import {
 } from "three/tsl";
 import { SUN_DIR, type PaintFields } from "../paint/fields";
 import { HAZE } from "../paint/underpaint";
+import type { WindField } from "../paint/wind";
 
 /**
- * Hazy high-key sky dome with massed cumulus, carried over from phase 0.
- * Real cloud brushwork arrives with the field in phases 3-4; this keeps the
- * value structure and warm light correct meanwhile.
+ * Hazy high-key sky dome with massed cumulus. Since phase 4 the cloud layer
+ * drifts downwind — slowly, at two slightly different rates per octave so the
+ * masses churn instead of sliding as a decal. Wind time is frozen in harness
+ * mode, so shot determinism is untouched.
  */
 
 const SKY = {
-  zenith: 0x6b9cce,
+  zenith: 0x5b92c8,
   horizon: 0xece5cf,
   cloud: 0xf8f3e4,
-  cloudShade: 0xbcc0cb,
+  cloudShade: 0xb4bac9,
   sunGlow: 0xffe9b8,
 } as const;
 
-export function buildSkyDome(fields: PaintFields): Mesh {
+export function buildSkyDome(fields: PaintFields, wind: WindField): Mesh {
   const seedZ = fields.seedU;
   const dir = positionLocal.normalize();
   const up = clamp(dir.y, 0.0, 1.0);
@@ -37,16 +39,18 @@ export function buildSkyDome(fields: PaintFields): Mesh {
   // Massed cumulus: noise on a plane projection so clouds flatten toward the
   // horizon, thresholded into shapes with lit tops and cool undersides.
   const proj = dir.xz.div(up.add(0.22));
-  const cu = proj.mul(0.32);
+  const cu = proj.mul(0.5).add(wind.cloudOffset(0.0045));
   const c1 = mx_noise_float(vec3(cu, seedZ)).mul(0.5).add(0.5);
-  const c2 = mx_noise_float(vec3(cu.mul(2.7), seedZ.add(17.4))).mul(0.5).add(0.5);
-  const c3 = mx_noise_float(vec3(cu.mul(6.3), seedZ.add(41.2))).mul(0.5).add(0.5);
-  const cloudField = c1.mul(0.55).add(c2.mul(0.3)).add(c3.mul(0.15));
+  const c2 = mx_noise_float(vec3(cu.mul(2.7).add(wind.cloudOffset(0.0016)), seedZ.add(17.4))).mul(0.5).add(0.5);
+  const c3 = mx_noise_float(vec3(cu.mul(6.3).add(wind.cloudOffset(0.0031)), seedZ.add(41.2))).mul(0.5).add(0.5);
+  // Contrast-stretched so real cumulus bodies form with blue sky between
+  // them (Ref 1's sky carries half the painting — ours has to hold its own).
+  const cloudField = c1.sub(0.5).mul(1.9).add(c2.sub(0.5).mul(0.9)).add(c3.sub(0.5).mul(0.4)).add(0.5);
   const horizonFade = smoothstep(0.02, 0.26, up);
-  const cloudMask = smoothstep(0.48, 0.6, cloudField).mul(horizonFade);
-  const cloudBody = mix(color(SKY.cloudShade), color(SKY.cloud), smoothstep(0.52, 0.74, cloudField));
+  const cloudMask = smoothstep(0.47, 0.6, cloudField).mul(horizonFade);
+  const cloudBody = mix(color(SKY.cloudShade), color(SKY.cloud), smoothstep(0.5, 0.78, cloudField));
   sky = mix(sky, cloudBody, cloudMask.mul(0.97));
-  sky = mix(sky, color(SKY.cloud), smoothstep(0.38, 0.5, cloudField).mul(horizonFade).mul(0.14));
+  sky = mix(sky, color(SKY.cloud), smoothstep(0.4, 0.52, cloudField).mul(horizonFade).mul(0.16));
 
   // Warm sun glow, high and hazy.
   const g = clamp(dir.dot(vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z)), 0.0, 1.0);

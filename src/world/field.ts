@@ -1,11 +1,13 @@
 import { Mesh, PerspectiveCamera, PlaneGeometry, Scene, Vector3, type WebGPURenderer } from "three/webgpu";
 import { Bird } from "../bird/bird";
 import type { BirdPreset } from "../bird/birdAnim";
+import { AccentStrokes } from "../paint/accents";
 import { PaintFields } from "../paint/fields";
 import { buildGroundLUT } from "../paint/palette";
 import { STROKE_LODS, StrokeLOD } from "../paint/strokes";
 import { buildUnderpaint } from "../paint/underpaint";
 import { FlowerField, GRASS_LODS, GrassLOD } from "../paint/vegetation";
+import { WindField } from "../paint/wind";
 import { FoodSystem } from "./food";
 import { buildSkyDome } from "./sky";
 import { buildTreeline } from "./treeline";
@@ -61,6 +63,21 @@ const SHOTS: readonly Shot[] = [
     target: new Vector3(0, 0.2, 0.35),
     bird: { preset: "idle", phase: 0 },
   },
+  // Phase-4 composed frames. hero is the final acceptance one-frame test:
+  // the killdeer mid-forage in the open field, sun high and warm, grass and
+  // poppies broken-colored around it, hazy sky above, both bands legible.
+  {
+    name: "hero",
+    position: new Vector3(0.5, 0.21, 0.58),
+    target: new Vector3(-0.16, 0.14, -1.3),
+    bird: { preset: "peck", phase: 0.42 },
+  },
+  {
+    name: "monet",
+    position: new Vector3(0.9, 0.95, 4.6),
+    target: new Vector3(-0.35, 1.35, -70),
+    bird: { preset: "alert", phase: 0 },
+  },
 ];
 
 export interface PaintWorld {
@@ -70,6 +87,7 @@ export interface PaintWorld {
   readonly strokeCount: number;
   readonly bird: Bird;
   readonly food: FoodSystem;
+  readonly wind: WindField;
   applyShot(name: string): boolean;
   /** Per-frame: stream stroke tiles around the camera. */
   update(renderer: WebGPURenderer): void;
@@ -78,6 +96,7 @@ export interface PaintWorld {
 export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
   const fields = new PaintFields(seed);
   const lut = buildGroundLUT();
+  const wind = new WindField(seed, fields);
   const scene = new Scene();
 
   // Subdivided so the underpaint's field noise can run at vertex rate.
@@ -85,7 +104,7 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
-  scene.add(buildSkyDome(fields));
+  scene.add(buildSkyDome(fields, wind));
   scene.add(buildTreeline(seed, lut));
 
   const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut));
@@ -95,15 +114,19 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     strokeCount += lod.mesh.count;
   }
 
-  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut));
+  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut, wind));
   for (const g of grass) {
     scene.add(g.mesh);
     strokeCount += g.mesh.count;
   }
-  const flowers = new FlowerField(fields, lut);
+  const flowers = new FlowerField(fields, lut, wind);
   scene.add(flowers.stems);
   scene.add(flowers.heads);
   strokeCount += flowers.stems.count * 2;
+
+  const accents = new AccentStrokes(fields, lut);
+  scene.add(accents.mesh);
+  strokeCount += accents.mesh.count;
 
   const bird = new Bird(lut, seed);
   scene.add(bird.root);
@@ -135,7 +158,8 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     for (const lod of lods) lod.update(renderer, camera.position.x, camera.position.z);
     for (const g of grass) g.update(renderer, camera.position.x, camera.position.z);
     flowers.update(renderer, camera.position.x, camera.position.z);
+    accents.update(renderer, camera.position.x, camera.position.z);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, bird, food, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, applyShot, update };
 }

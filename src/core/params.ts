@@ -6,12 +6,14 @@
  * `?harness=1` — harness mode: fixed timestep, no controls damping, HUD hidden,
  *                so a shot is reproducible pixel-for-pixel.
  * `?hud=0|1`   — force the HUD on or off (defaults: on interactively, off in harness).
+ * `?grade=0`   — disable the final color-script grade (the filter test).
  */
 export interface BootParams {
   readonly seed: number;
   readonly shot: string | null;
   readonly harness: boolean;
   readonly hud: boolean;
+  readonly grade: boolean;
 }
 
 export const DEFAULT_SEED = 1;
@@ -28,5 +30,7 @@ export function readParams(search: string): BootParams {
   const hudRaw = q.get("hud");
   const hud = hudRaw === null ? !harness : hudRaw === "1";
 
-  return { seed, shot: q.get("shot"), harness, hud };
+  const grade = q.get("grade") !== "0";
+
+  return { seed, shot: q.get("shot"), harness, hud, grade };
 }

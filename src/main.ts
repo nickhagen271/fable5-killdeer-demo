@@ -4,6 +4,7 @@ import { installHooks } from "./core/hooks";
 import { readParams } from "./core/params";
 import { Hud } from "./debug/hud";
 import { bootDone, bootMsg, failLoud } from "./render/diagnostics";
+import { buildGrade } from "./render/grade";
 import { initWebGPU } from "./render/initWebGPU";
 import { runComputeSelfTest } from "./render/selfTest";
 import { buildPaintWorld } from "./world/field";
@@ -74,6 +75,9 @@ async function main(): Promise<void> {
     scriptMove.set(moveX, moveZ);
     world.bird.update(dt, scriptMove, { peck, alert: false });
   };
+  hooks.setWindTime = (t): void => {
+    world.wind.time = t;
+  };
   hooks.foodInfo = () => {
     const bx = world.bird.position.x;
     const bz = world.bird.position.z;
@@ -123,10 +127,14 @@ async function main(): Promise<void> {
 
   bootMsg("first frame", 0.95);
 
+  // The final glaze. `?grade=0` renders the raw painted frame instead.
+  const grade = params.grade ? buildGrade(renderer, world.scene, world.camera) : null;
+
   const camFwd = new Vector3();
   const move = new Vector2();
   let lastTime = performance.now();
   let fpsSmoothed = 0;
+  let windClock = 0;
 
   renderer.setAnimationLoop(() => {
     const now = performance.now();
@@ -139,6 +147,8 @@ async function main(): Promise<void> {
 
     if (!params.harness) {
       const dt = Math.min(frameMs, 100) / 1000;
+      windClock += dt;
+      world.wind.time = windClock;
 
       // Camera-relative input on the ground plane.
       world.camera.getWorldDirection(camFwd);
@@ -168,7 +178,8 @@ async function main(): Promise<void> {
     }
 
     world.update(renderer);
-    renderer.render(world.scene, world.camera);
+    if (grade) grade.render();
+    else renderer.render(world.scene, world.camera);
 
     hooks.frame += 1;
     hud.update(

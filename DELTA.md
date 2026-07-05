@@ -6,6 +6,109 @@ significant differences ranked by impact, fix the top three, re-shoot.
 
 ---
 
+## Phase 4 — 2026-07-05, seed 7 — FINAL
+
+Comparison set: `shots/phase-4/compare/` (13 pairs, now including the two
+composed frames). Final acceptance frame: `shots/phase-4/hero.png` beside
+Ref 2 in the gallery. Battery: `shots/phase-4/motion/report.json`.
+
+**What phase 4 built.** The breath and the close: a seeded wind field (one
+global gentle direction, travelling primary wave + drifting gust noise) that
+grass bows to, flowers pendulum on, and the cloud layer drifts with — all
+from one shared field so the painting moves together; the edge pass done
+with paint (sparse deep-cool accent ticks laid along shadow-mass boundaries
+by a compute kernel probing the mask's gradient — never a uniform outline);
+the final color-script grade (warm glaze, soft S-curve, high-key floor,
+`?grade=0` to disable); stronger cumulus with blue overhead; and the two
+composed frames — `hero` (the one-frame test: killdeer mid-peck, both bands
+legible, poppy band at the horizon, hazy sky) and `monet` (wide field /
+treeline / sky composition).
+
+**Wind determinism.** Wind time is a uniform frozen at 0 in harness mode:
+the static boil check and every still shot are untouched. The `wind` motion
+path drives time explicitly (1/30 s per frame) at a fixed camera — the
+flipbook is the breath; setting time back to 0 reproduces the t=0 frame
+pixel-exactly (verified during development, diff exactly 0.0).
+
+### Top ten deltas (ranked by impact)
+
+1. **The sky was still nearly featureless** beside Ref 1's massed cumulus.
+   → **FIXED (to "hazy summer" level):** contrast-stretched cloud field,
+   deeper zenith blue, lit bodies over violet-grey undersides, sun glow.
+   Honest residual: our sky is Ref 4's milky-bright day, not Ref 1's
+   towering cumulus — masses read, drama doesn't.
+2. **No motion in a "painting that breathes" build.** → **FIXED:** the wind
+   system above; grass ripples in gust bands, flower heads overshoot their
+   stems, clouds drift downwind at two rates.
+3. **Uniformly crisp edges everywhere.** → **FIXED (accent half):** painted
+   dark accents at value-mass boundaries, eroding with distance. The lost
+   half remains atmospheric (haze, shared palette) rather than a per-edge
+   silhouette model — noted as the honest gap in the rubric.
+4. **Composition had no anchor frame.** → FIXED with the composed `hero` and
+   `monet` shots (and the follow camera already frames the bird in play).
+5. **Grade risk:** the warm glaze slightly greys the zenith blue; balanced
+   against it by the deeper base blue. Acceptable, watched.
+6. **Gulp beat still reuses the alert pose** (phase-3 delta 8) — unchanged;
+   a dedicated head-toss remains future work.
+7. **Near-thicket density** (phase-3 delta 4) — unchanged; the CPU-raster
+   harness budget caps it. On a real GPU there is headroom to double it.
+8. **Tree crowns cauliflower at close range** (phase-3 delta 6) — unchanged;
+   treeline ring distance keeps it out of normal play framing.
+9. **Wind does not reach the treeline canopies** — the far masses hold
+   still. At 175 m+ behind haze this reads acceptable; noted.
+10. **The bird ignores the wind** — no feather ruffle. Real birds are
+    aerodynamic; static plumage reads fine at play distance. Noted.
+
+Top three actionable (1, 2, 3) fixed and re-shot; the committed comparisons
+are the post-fix state.
+
+### Verification battery (phase 4 — final)
+
+- **Coherence: PASS** — static boil check re-run with wind system present
+  (frozen): pixel-identical; orbit/sprint flipbooks ground-locked. See
+  `shots/phase-4/motion/report.json`.
+- **Breath: PASS** — the `wind` path flipbook shows grass/flower/cloud
+  motion as brushwork in the wind; deterministic per (seed, t).
+- **Filter test: PASS** — `shots/phase-4/hero-ungraded.png` (`?grade=0`) is
+  still a painted frame; the post pass carries only the unifying glaze.
+- **Value test:** `shots/phase-4/value-hero.png` — sky / treeline band /
+  lit field / shadow drifts / bird-with-bands separate; the bird reads
+  against the ground.
+- **Palette test: PASS structurally** — all paint passes LUT-locked; the
+  grade applies a bounded warm transform on top.
+- **Killdeer test: PASS** — both breast bands, plover posture, run-stop-peck
+  (gait + forage flipbooks re-captured in this battery).
+- **Contact sheet:** vista / ground / detail / macro / sky / meadow /
+  treeline / bird set / follow / hero / monet in `shots/phase-4/`.
+
+### Self-score rubric (phase 4 — final)
+
+| Row | Score | What would raise it by 2 (post-prototype) |
+|---|---|---|
+| Brushwork & impasto fidelity | 5 | Inter-stroke occlusion; bristle-broken silhouettes |
+| Palette & value structure | 6 | True cumulus value mass in the sky; mid-field dark clumps |
+| Broken color | 6 | Violet/pink interference through the lit grass |
+| Edge control | 4 | A per-silhouette lost-and-found model, not just accents + haze |
+| **Stroke coherence in motion** | 8 | Sub-pixel far-stroke AA; wind on treeline without shimmer |
+| Killdeer identity | 7 | Feather-shell stroke ribbons on the body |
+| Killdeer animation & run-stop-peck | 7 | Dedicated swallow toss; tail fan on hard stops |
+| Field & environment painting | 6 | Denser near thicket; second grass vocabulary |
+| Wind & motion | 6 | Gust-driven value shimmer on the lit grass (paint responding to light, not just position) |
+| Composition & camera | 6 | Cloud masses balancing the frame top; rule-of-thirds follow framing |
+
+**The one-frame test:** `hero.png` — killdeer mid-forage, sun high and warm,
+broken-colored grass and poppies around it, hazy sky above, both breast
+bands legible. Beside the references it reads as clearly synthetic but the
+same class of image: no flat ground, no dead shadows, no filtered-not-painted
+look, no generic bird. The prototype's remaining distance to a real canvas
+is in stroke silhouette richness and sky drama, both documented above.
+
+**Handoff.** The last gate is the human's: run it, move the bird, judge the
+feel. Controls in README. Everything after (nest, display, seasons, story)
+builds on this foundation.
+
+---
+
 ## Phase 3 — 2026-07-04, seed 7
 
 Comparison set: `shots/phase-3/compare/` (11 pairs, now including

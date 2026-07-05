@@ -32,6 +32,11 @@ export interface PkdHooks {
    * given the same call sequence, so behavior can be captured headless.
    */
   birdStep: (dt: number, moveX: number, moveZ: number, peck: boolean) => void;
+  /**
+   * Set the wind-field time (seconds). Frozen at 0 in harness mode unless a
+   * capture drives it — the breath is deterministic per (seed, t).
+   */
+  setWindTime: (t: number) => void;
   /** Foraging state relative to the current bird position (harness). */
   foodInfo: () => {
     total: number;
@@ -61,6 +66,7 @@ export function installHooks(seed: number): PkdHooks {
     setPose: () => undefined,
     birdPreset: () => false,
     birdStep: () => undefined,
+    setWindTime: () => undefined,
     foodInfo: () => ({ total: 0, eaten: 0, bird: [0, 0], nearest: null }),
   };
   window.__PKD = hooks;

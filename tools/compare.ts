@@ -31,6 +31,8 @@ const PAIRS: readonly Pair[] = [
   { shot: "bird_run", ref: "KD1.png", note: "killdeer running — gait, lean, markings in motion" },
   { shot: "bird_alert", ref: "KD2.png", note: "alert stance vs reference paint language" },
   { shot: "bird_peck", ref: "KD1.png", note: "peck — forward tilt, bill to ground" },
+  { shot: "hero", ref: "Ref 2.jpg", note: "THE one-frame test: killdeer mid-forage, poppies, hazy sky" },
+  { shot: "monet", ref: "Ref 1.jpg", note: "wide composition — field, treeline band, sky share" },
 ];
 
 function parsePhase(argv: readonly string[]): number {
