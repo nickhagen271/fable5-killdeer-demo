@@ -4,7 +4,7 @@ import { installHooks } from "./core/hooks";
 import { readParams } from "./core/params";
 import { Hud } from "./debug/hud";
 import { bootDone, bootMsg, failLoud } from "./render/diagnostics";
-import { buildGrade } from "./render/grade";
+import { PaintPost } from "./paint/post";
 import { initWebGPU } from "./render/initWebGPU";
 import { runComputeSelfTest } from "./render/selfTest";
 import { buildPaintWorld } from "./world/field";
@@ -127,8 +127,9 @@ async function main(): Promise<void> {
 
   bootMsg("first frame", 0.95);
 
-  // The final glaze. `?grade=0` renders the raw painted frame instead.
-  const grade = params.grade ? buildGrade(renderer, world.scene, world.camera) : null;
+  // The painterly post stack — the frame becomes paint here. `?post=0`
+  // bypasses it (debug); `?grade=0` keeps the stack but skips the last glaze.
+  const post = params.post ? new PaintPost(renderer, world.scene, world.camera, { grade: params.grade }) : null;
 
   const camFwd = new Vector3();
   const move = new Vector2();
@@ -178,7 +179,7 @@ async function main(): Promise<void> {
     }
 
     world.update(renderer);
-    if (grade) grade.render();
+    if (post) post.render();
     else renderer.render(world.scene, world.camera);
 
     hooks.frame += 1;

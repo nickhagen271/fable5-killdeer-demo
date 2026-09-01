@@ -7,6 +7,8 @@
  *                so a shot is reproducible pixel-for-pixel.
  * `?hud=0|1`   — force the HUD on or off (defaults: on interactively, off in harness).
  * `?grade=0`   — disable the final color-script grade (the filter test).
+ * `?post=0`    — bypass the painterly post stack entirely (debugging only:
+ *                the raw stroke render, before the frame becomes paint).
  */
 export interface BootParams {
   readonly seed: number;
@@ -14,6 +16,7 @@ export interface BootParams {
   readonly harness: boolean;
   readonly hud: boolean;
   readonly grade: boolean;
+  readonly post: boolean;
 }
 
 export const DEFAULT_SEED = 1;
@@ -31,6 +34,7 @@ export function readParams(search: string): BootParams {
   const hud = hudRaw === null ? !harness : hudRaw === "1";
 
   const grade = q.get("grade") !== "0";
+  const post = q.get("post") !== "0";
 
-  return { seed, shot: q.get("shot"), harness, hud, grade };
+  return { seed, shot: q.get("shot"), harness, hud, grade, post };
 }
