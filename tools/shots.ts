@@ -17,6 +17,7 @@ interface Args {
   readonly height: number;
   readonly only: string | null;
   readonly palette: string;
+  readonly bare: boolean;
 }
 
 function parseArgs(argv: readonly string[]): Args {
@@ -31,6 +32,7 @@ function parseArgs(argv: readonly string[]): Args {
     height: Number(get("--height") ?? 720),
     only: get("--only"),
     palette: get("--palette") ?? "sunset",
+    bare: argv.includes("--bare"),
   };
 }
 
@@ -53,7 +55,7 @@ async function main(): Promise<void> {
     });
     page.on("pageerror", (err) => console.error(`[page] ${err.message}`));
 
-    await page.goto(`${baseUrl}/?seed=${args.seed}&harness=1&palette=${args.palette}`);
+    await page.goto(`${baseUrl}/?seed=${args.seed}&harness=1&palette=${args.palette}${args.bare ? "&bare=1" : ""}`);
     const state = await waitForApp(page);
 
     const a = state.adapter;

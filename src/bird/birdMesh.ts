@@ -88,7 +88,9 @@ function headMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
   // BLACK face band below the eye, bill to cheek, wrapping under the chin
   // (the identifying face pattern — a bold single stroke, not a smudge).
   const sideBand = ny.greaterThan(-0.1).and(ny.lessThan(0.16)).and(n.x.abs().greaterThan(0.34)).and(nz.lessThan(0.75));
-  const chinWrap = ny.greaterThan(-0.52).and(ny.lessThan(-0.24)).and(nz.greaterThan(0.4));
+  // The wrap under the chin is a NARROW strap: white throat stays visible
+  // between it and the upper breast collar.
+  const chinWrap = ny.greaterThan(-0.4).and(ny.lessThan(-0.26)).and(nz.greaterThan(0.5));
   row = select(sideBand.or(chinWrap), float(ROW.birdBlack), row);
   return row;
 }
