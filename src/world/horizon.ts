@@ -43,8 +43,8 @@ interface RingSpec {
 }
 
 const RINGS: readonly RingSpec[] = [
-  { radius: 500, maxHeight: 46, skyShift: 0.62, noiseScale: 1.7, seedOffset: 311.5 },
-  { radius: 445, maxHeight: 26, skyShift: 0.4, noiseScale: 2.6, seedOffset: 97.3 },
+  { radius: 500, maxHeight: 72, skyShift: 0.38, noiseScale: 1.7, seedOffset: 311.5 },
+  { radius: 445, maxHeight: 40, skyShift: 0.22, noiseScale: 2.6, seedOffset: 97.3 },
 ];
 
 function buildRing(spec: RingSpec, fields: PaintFields, lut: PaletteLUT, atm: AtmosphereUniforms): Mesh {
@@ -97,15 +97,15 @@ function buildRing(spec: RingSpec, fields: PaintFields, lut: PaletteLUT, atm: At
     // gently toward the crest, broken by a lateral stroke texture.
     const strokeTex = mx_noise_float(vec3(az.mul(260.0), frac.mul(14.0), fields.seedU.add(1.9)));
     const dither = hash(az.mul(913.7).add(frac.mul(311.1))).sub(0.5).mul(0.05);
-    const value = clamp(frac.mul(0.34).add(0.3).add(strokeTex.mul(0.13)).add(dither), 0.03, 0.95);
+    const value = clamp(frac.mul(0.3).add(0.16).add(strokeTex.mul(0.13)).add(dither), 0.03, 0.95);
     const farBody = texture(lut.texture, vec2(value, (ROW.hillFar + 0.5) / lut.rows)).rgb;
     const litBody = texture(lut.texture, vec2(value.add(0.2), (ROW.hillLit + 0.5) / lut.rows)).rgb;
     let paint = mix(farBody, litBody, lit.mul(0.75));
 
     // The hills live inside the sky: shift toward the horizon color, harder
     // near the base so they seat into the haze with a lost edge.
-    const seat = smoothstep(0.3, 0.0, frac).mul(0.35);
-    paint = mix(paint, atm.skyHorizon, float(spec.skyShift).mul(0.7).add(seat));
+    const seat = smoothstep(0.3, 0.0, frac).mul(0.2);
+    paint = mix(paint, atm.skyHorizon, float(spec.skyShift).add(seat));
 
     return vec4(paint, 1.0);
   })();

@@ -30,9 +30,9 @@ export function buildSkyDome(fields: PaintFields, wind: WindField, atm: Atmosphe
   // on the sun side a touch more than opposite it (ref_d's peach pools
   // around the glow).
   const sunward = clamp(dir.xz.normalize().dot(SUN.xz.normalize()), -1.0, 1.0).mul(0.5).add(0.5);
-  const horizonC = mix(atm.skyHorizon, atm.sunGlow, sunward.mul(atm.sunAmount).mul(0.35));
-  let sky = mix(horizonC, atm.skyMid, smoothstep(0.0, 0.3, up));
-  sky = mix(sky, atm.skyTop, smoothstep(0.22, 0.85, up));
+  const horizonC = mix(atm.skyHorizon, atm.sunGlow, sunward.mul(atm.sunAmount).mul(0.5));
+  let sky = mix(horizonC, atm.skyMid, smoothstep(0.0, 0.26, up));
+  sky = mix(sky, atm.skyTop, smoothstep(0.12, 0.6, up));
 
   // Massed cumulus: noise on a plane projection so clouds flatten toward the
   // horizon, thresholded into shapes with lit tops and cool undersides.
@@ -54,8 +54,8 @@ export function buildSkyDome(fields: PaintFields, wind: WindField, atm: Atmosphe
   // The sun as a soft glow disc: a hot core melting into a broad halo —
   // never a hard-edged circle. Strength is the palette's sunAmount.
   const g = clamp(dir.dot(SUN), 0.0, 1.0);
-  const halo = pow(g, 7.0).mul(0.45).add(pow(g, 60.0).mul(0.55)).add(pow(g, 320.0).mul(0.5));
-  sky = mix(sky, atm.sunGlow, clamp(halo.mul(atm.sunAmount), 0.0, 0.96));
+  const halo = pow(g, 7.0).mul(0.7).add(pow(g, 48.0).mul(0.9)).add(pow(g, 300.0).mul(0.8));
+  sky = mix(sky, atm.sunGlow, clamp(halo.mul(atm.sunAmount), 0.0, 0.97));
 
   // Dragged-stroke texture: elongated lateral noise (long in azimuth, short
   // in elevation) — the sky is laid in with a wide dry brush, and it shows.

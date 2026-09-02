@@ -11,3 +11,4 @@ shots/*
 
 # motion sequences are regenerable (npm run motion); keep only the report
 shots/phase-*/motion/*/*.png
+shots/probe/
