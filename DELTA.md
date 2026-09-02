@@ -158,6 +158,49 @@ Ten deltas, ranked (from the first trek pass):
 
 Top three fixed and re-shot; the committed trek strip is the re-run.
 
+---
+
+## Phase 3 — the killdeer is a killdeer
+
+Judged: `shots/phase-3/td_side.png`, `td_front.png`, `td_34.png`,
+`td_fan.png` (the `?bare=1` turnaround on plain canvas) beside
+`reference/KD1..3.png`, plus `bird_idle/run/peck/alert`, `hero`, `follow`
+in the meadow.
+
+Ten deltas found through the loop, ranked:
+
+1. **Front views saw the rufous tail interior through the breast** — the
+   body lathe's end-holes were open. Fixed: the profile pinches closed.
+2. **The chin-wrap black swallowed the white throat** and merged with the
+   upper collar. Fixed: a narrow strap, white throat restored.
+3. **Wing scallops read as curly noise swirls**, not painted feather
+   ranks. Fixed: even ranks with a whisper of wobble.
+4. Head sat low enough to merge the silhouette into one hump. Fixed:
+   raised above the shoulder line.
+5. The black frontal bar capped the whole crown. Fixed: a thin stroke
+   between the eyes.
+6. Band edges were smudged by marking wobble. Fixed: wobble halved —
+   confident single strokes.
+7. Eye and orbital ring undersized for the plover look. Fixed: both
+   enlarged, ring thickened; it now reads at a glance in every view.
+8. Body read short; wings didn't reach the tail base. Fixed: body carried
+   longer, wings elongated and pointed.
+9. Run gait was too level and the head bobbed with the body. Fixed:
+   nose-down dash with counter-pitched steady head; stop lands with one
+   sharp bob.
+10. No rufous flash existed. Fixed: the tail-fan grooming beat spreads
+    and lifts the tail — `td_fan` shows the orange field with its black
+    subterminal band and white rim.
+
+**Gate:** every mandatory marking is visible in the turnaround — the two
+black breast bands, the red-orange orbital ring, white forehead with the
+black inter-eye bar, white supercilium and collar, black face band
+wrapping under the chin as a narrow strap, cream underparts, brown back
+with pale-fringed feather ranks, dark wingtips, pale thin legs, and the
+rufous rump/tail with black subterminal band and white tip when fanned.
+The bird reads as *Charadrius vociferus* at a one-second glance in side,
+front, and three-quarter.
+
 **Painty test after fixes:** sky patch (zenith), sky patch (near horizon),
 foreground grass patch, mid-distance patch — all carry stroke texture,
 weave, or both; none could be mistaken for a smooth 3D render. The bird
