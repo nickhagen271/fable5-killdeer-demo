@@ -59,6 +59,57 @@ Ten most significant deltas, ranked:
 
 Items 4–10 are the Phase 1–3 work plan, in order.
 
+---
+
+## Phase 1 — stroke sky, flower dabs, horizon band, two palettes
+
+Judged: `shots/phase-1/` — sunset set (`vista`, `sun`, `meadow`, `ground`,
+`sky`, `hero`) against the ref_d description (lavender→peach sky, sun as a
+soft glow disc, hill silhouettes, hedgerow band, yellow-lit grass, big
+knife dabs) and the overcast set (`*_overcast`) against ref_a/ref_b
+(cool blue-green grass, poppy/cornflower/daisy/buttercup dabs, luminous
+gray sky, crisp near dabs dissolving treeline).
+
+Ten most significant deltas found during the loop, ranked:
+
+1. **Hill silhouettes missing entirely.** NodeMaterial.positionNode
+   assigns into positionLocal and silently collapsed on a plain Mesh — the
+   ring rendered as its raw 1 m cylinder.
+2. **Ground strokes wearing bloom/soil rows.** The v2 row remap let
+   meter-long far-LOD strokes paint themselves buttercup yellow and shadow
+   poppy red — flat spills and maroon slugs across the meadow (plus two
+   stale row numbers in the grass shader mapping dry blades onto cool
+   rows and shadow grass onto hedgerow dark).
+3. **Close dabs failed the painty test.** The knife touch was shaded as a
+   smooth spherical CG lens by its continuous relief gradient.
+4. Hills, once visible, were washed nearly into the sky (too much
+   sky-shift, too pale, too low).
+5. Sun glow disc too weak; peach pool around it too narrow; lavender
+   zenith arriving too high in the dome.
+6. Overcast lacked cloud mass at first tuning (cover threshold).
+7. Dabs hovered too high — blooms floated visibly above the grass.
+8. Hedgerow band is still the v1 tree ring — no continuous dark band
+   between the trees. (Deferred: Phase 2 streams the whole band.)
+9. Mid-distance grass blades read as rigid spikes in the raw render
+   (mostly melted by the post at distance). (Phase 2 wind/grass pass.)
+10. Treeline understory skirts read as floating dark slugs beside the
+    trunks. (Phase 2 replaces the treeline.)
+
+**Top fixes applied (1–7), re-shot after each:** hills rebuilt as a
+CPU-baked ring (seeded sine harmonics, analytic slope → baked sun-facing
+flank light) with darker values and less sky-shift; ground strokes and
+grass constrained to the three grass rows; dab shading flattened to one
+pigment plane with three hard drag-streak bands and boundary glints;
+sun glow strengthened with a wider sunward pool and lower lavender onset;
+overcast cloud cover raised; dab hover lowered. Items 8–10 carry into
+Phase 2's streamed horizon band and grass pass.
+
+**Gate:** both palettes read as different paintings of the same meadow —
+sunset holds the lavender→peach→cream ramp with mauve hills and a warm
+pool at the sun azimuth; overcast holds the gray-blue sky, massed clouds,
+cool greens and red poppy specks. The painty test passes on sky, ground,
+and dab patches in both.
+
 **Painty test after fixes:** sky patch (zenith), sky patch (near horizon),
 foreground grass patch, mid-distance patch — all carry stroke texture,
 weave, or both; none could be mistaken for a smooth 3D render. The bird
