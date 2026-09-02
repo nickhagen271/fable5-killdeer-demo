@@ -291,7 +291,7 @@ export class PaintPost {
       // them almost untouched so the foreground stays crisp impasto.
       const smoothed = colorSum.div(weightSum);
       const original = texture(colorTex, p).rgb;
-      const amount = mix(float(0.35), float(1.0), farFactor);
+      const amount = mix(float(0.55), float(1.0), farFactor);
       return vec4(mix(original, smoothed, amount), 1.0);
     })();
 
@@ -320,7 +320,7 @@ export class PaintPost {
       const tremor = mx_noise_float(vec3(px.mul(0.055), 7.7)).mul(mix(float(1.1), float(2.1), farFactor));
       const p = p0.add(perp.mul(tremor).mul(invSize)).toVar();
 
-      const stepLen = mix(float(0.9), float(2.2), farFactor);
+      const stepLen = mix(float(0.9), float(2.8), farFactor);
       const stepUv = tangent.mul(stepLen).mul(invSize);
 
       const weights = [0.24, 0.19, 0.115, 0.05, 0.016];
@@ -365,8 +365,10 @@ export class PaintPost {
       const acrossPx = dot(px, vec2(tangent.y.negate(), tangent.x));
       const grain = mx_noise_float(vec3(along.mul(0.045), acrossPx.mul(0.34), 3.1));
       const grain2 = mx_noise_float(vec3(along.mul(0.11), acrossPx.mul(0.5), 17.9));
-      const grainAmp = mix(float(0.028), float(0.045), farFactor);
-      c.assign(c.mul(grain.mul(grainAmp).add(grain2.mul(grainAmp).mul(0.6)).add(1.0)));
+      const grain3 = mx_noise_float(vec3(along.mul(0.014), acrossPx.mul(0.16), 43.7));
+      const grainAmp = mix(float(0.042), float(0.075), farFactor);
+      const grainSum = grain.mul(grainAmp).add(grain2.mul(grainAmp).mul(0.6)).add(grain3.mul(grainAmp).mul(1.15));
+      c.assign(c.mul(grainSum.add(1.0)));
 
       // --- impasto relief: height ≈ local luminance excess; lit by the sun's
       // screen-space direction, and only where light already collects — thick
@@ -378,9 +380,9 @@ export class PaintPost {
       const hy0 = this.sampleLum(streakTex, p.sub(vec2(0, 1.6).mul(t)));
       const dhx = hx1.sub(hx0);
       const dhy = hy1.sub(hy0);
-      const thickness = smoothstep(0.35, 0.8, lum).mul(mix(float(1.0), float(0.12), farFactor));
+      const thickness = smoothstep(0.35, 0.8, lum).mul(mix(float(1.0), float(0.18), farFactor));
       const reliefLight = dhx.mul(sunScreen.x).add(dhy.mul(sunScreen.y));
-      c.assign(c.mul(reliefLight.mul(thickness).mul(0.85).add(1.0)));
+      c.assign(c.mul(reliefLight.mul(thickness).mul(1.7).add(1.0)));
 
       // --- canvas weave over the whole frame, breaking through where the
       // paint lies thin (dark passages and the melted distance).
