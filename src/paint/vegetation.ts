@@ -332,8 +332,8 @@ export class FlowerField {
 
       // Size: many small touches, a rare XL foreground dab; later touches of
       // one bloom are a bit smaller than the first.
-      let size = mix(float(0.045), float(0.12), pow(r3, 1.7));
-      size = size.mul(select(hash(r3.mul(719.3)).greaterThan(0.94), float(1.8), float(1.0)));
+      let size = mix(float(0.045), float(0.11), pow(r3, 1.7));
+      size = size.mul(select(hash(r3.mul(719.3)).greaterThan(0.95), float(1.5), float(1.0)));
       size = size.mul(select(sub.lessThan(0.5), float(1.0), float(0.78))).mul(alive);
 
       // Dab offset within the bloom and hover height ("stems" are unseen).
@@ -341,7 +341,7 @@ export class FlowerField {
       const offR = select(sub.lessThan(0.5), float(0.0), size.mul(rSub.mul(0.5).add(0.35)));
       const px = bx.add(cos(offAng).mul(offR));
       const pz = bz.add(sin(offAng).mul(offR));
-      const hover = mix(float(0.09), float(0.34), pow(r4, 1.4)).add(rSub.mul(0.04));
+      const hover = mix(float(0.06), float(0.24), pow(r4, 1.4)).add(rSub.mul(0.03));
 
       // Species: a slow field picks the local dominant; most blooms follow
       // it, the rest scatter across the palette's five dab rows.
@@ -354,7 +354,7 @@ export class FlowerField {
       const lit = fields.litness(p);
       const rowPacked = cIdx.add(clamp(lit, 0.002, 0.998));
       const angle = r5.mul(PI.mul(2.0)).add(sub.mul(1.9));
-      const aspect = mix(float(1.25), float(1.9), r4);
+      const aspect = mix(float(1.15), float(1.6), r4);
 
       bufA.element(i).assign(vec4(px, pz, hover, size));
       bufB.element(i).assign(vec4(angle, aspect, rowPacked, rSub));
@@ -412,8 +412,8 @@ export class FlowerField {
       // Dabs are pure color and the thickest paint in the field: high value,
       // one plane per touch, knife-drag streaks inside.
       const dither = hash(positionWorld.x.mul(59.3).add(positionWorld.z.mul(83.1))).sub(0.5).mul(0.04);
-      const touchJitter = hash(rand.mul(391.3)).sub(0.5).mul(0.18);
-      const value = clamp(lit.mul(0.38).add(0.56).add(touchJitter).add(dither), 0.05, 0.98);
+      const touchJitter = hash(rand.mul(391.3)).sub(0.5).mul(0.14);
+      const value = clamp(lit.mul(0.28).add(0.64).add(touchJitter).add(dither), 0.3, 0.98);
       const rowV = cIdx.add(0.5).div(lut.rows);
       const paint = texture(lut.texture, vec2(value, rowV)).rgb;
 

@@ -79,6 +79,14 @@ const SHOTS: readonly Shot[] = [
     target: new Vector3(-0.35, 1.35, -70),
     bird: { preset: "alert", phase: 0 },
   },
+  // Facing the low sun: the ref_d frame — glow disc, peach pool, lit hill
+  // flanks, hedgerow dark against the light, big dabs at the feet.
+  {
+    name: "sun",
+    position: new Vector3(0.4, 0.85, 0.6),
+    target: new Vector3(-55, 13, -42),
+    bird: { preset: "idle", phase: 0 },
+  },
 ];
 
 export interface PaintWorld {
@@ -109,7 +117,7 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
 
   scene.add(buildSkyDome(fields, wind, palette.atm));
   scene.add(buildTreeline(seed, lut, palette.atm));
-  const horizon = new HorizonBand(fields, lut, palette.atm);
+  const horizon = new HorizonBand(seed, Math.atan2(-0.55, -0.42), fields, lut, palette.atm);
   scene.add(horizon.group);
 
   const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut));
