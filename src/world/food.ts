@@ -20,6 +20,7 @@ import {
 } from "three/tsl";
 import { Rng } from "../core/rng";
 import type { PaletteLUT } from "../paint/palette";
+import type { Terrain } from "./terrain";
 
 /**
  * Food spots: worms and small beetles, painted in the same dark-warm notes as
@@ -45,7 +46,7 @@ export class FoodSystem {
   private readonly spots: Spot[] = [];
   private readonly attr: InstancedBufferAttribute;
 
-  constructor(seed: number, lut: PaletteLUT) {
+  constructor(seed: number, lut: PaletteLUT, terrain: Terrain) {
     const rng = new Rng(seed).fork("food");
     // One instanced attribute only (this stack misreads a third per-instance
     // stream): x, z, code (kind·10 + alive), rand.
@@ -82,7 +83,7 @@ export class FoodSystem {
       const wiggle = select(isWorm, sin(u.mul(9.0).add(rand.mul(20.0))).mul(0.012), 0.0);
       const off = dir.mul(u.mul(len)).add(side.mul(v.mul(wid).add(wiggle)));
       const y = clamp(alive, 0.0, 1.0).mul(0.052); // eaten → collapse under paint
-      return vec3(rec.x.add(off.x), y, rec.y.add(off.y));
+      return vec3(rec.x.add(off.x), y.add(terrain.height(vec2(rec.x, rec.y))), rec.y.add(off.y));
     })();
 
     material.fragmentNode = Fn(() => {

@@ -44,6 +44,14 @@ export interface PkdHooks {
     bird: readonly [number, number];
     nearest: readonly [number, number] | null;
   };
+  /** Terrain height at a world XZ (CPU twin) — trek camera placement. */
+  groundHeight: (x: number, z: number) => number;
+  /**
+   * Main-thread streaming stalls: frames whose world.update (stream
+   * enqueue) took over 8 ms on the JS thread. The spec's no-hitch gate.
+   */
+  stallCount: number;
+  worstUpdateMs: number;
 }
 
 declare global {
@@ -68,6 +76,9 @@ export function installHooks(seed: number): PkdHooks {
     birdStep: () => undefined,
     setWindTime: () => undefined,
     foodInfo: () => ({ total: 0, eaten: 0, bird: [0, 0], nearest: null }),
+    groundHeight: () => 0,
+    stallCount: 0,
+    worstUpdateMs: 0,
   };
   window.__PKD = hooks;
   return hooks;

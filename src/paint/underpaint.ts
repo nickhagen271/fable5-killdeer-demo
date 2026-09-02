@@ -1,18 +1,23 @@
-import { NodeMaterial } from "three/webgpu";
+import { NodeMaterial, Vector2 } from "three/webgpu";
 import {
   Fn,
   cameraPosition,
   clamp,
   hash,
   mix,
+  positionLocal,
   positionWorld,
   sin,
   smoothstep,
   texture,
+  uniform,
   vec2,
+  vec3,
   vec4,
   vertexStage,
 } from "three/tsl";
+import type UniformNode from "three/src/nodes/core/UniformNode.js";
+import type { Terrain } from "../world/terrain";
 import type { PaintFields } from "./fields";
 import type { AtmosphereUniforms, PaletteLUT } from "./palette";
 
@@ -24,8 +29,28 @@ import type { AtmosphereUniforms, PaletteLUT } from "./palette";
  * then the palette's warm haze.
  */
 
-export function buildUnderpaint(fields: PaintFields, lut: PaletteLUT, atm: AtmosphereUniforms): NodeMaterial {
+export interface UnderpaintBuild {
+  readonly material: NodeMaterial;
+  /** Grid snap origin (meters, snapped) — set to the camera each frame. */
+  readonly snapU: UniformNode<"vec2", Vector2>;
+}
+
+export function buildUnderpaint(
+  fields: PaintFields,
+  lut: PaletteLUT,
+  atm: AtmosphereUniforms,
+  terrain: Terrain,
+): UnderpaintBuild {
   const material = new NodeMaterial();
+
+  // The ground is a camera-following grid: local XZ plus a snapped origin,
+  // draped over the terrain heightfield per vertex.
+  const snapU = uniform(new Vector2(0, 0));
+  material.positionNode = Fn(() => {
+    const wx = positionLocal.x.add(snapU.x);
+    const wz = positionLocal.z.add(snapU.y);
+    return vec3(wx, terrain.height(vec2(wx, wz)), wz);
+  })();
 
   material.fragmentNode = Fn(() => {
     const p = positionWorld.xz;
@@ -55,6 +80,8 @@ export function buildUnderpaint(fields: PaintFields, lut: PaletteLUT, atm: Atmos
     let paint = mix(row(0).rgb, row(2).rgb, smoothstep(0.3, 0.7, grain).mul(0.6));
     paint = mix(paint, row(3).rgb, smoothstep(0.5, 0.9, drift).mul(0.55));
     paint = mix(paint, row(2).rgb, vertexStage(fields.shadowMask(p)).mul(0.65));
+    // Bare soil patches: the worn ground worms cluster on.
+    paint = mix(paint, row(3).rgb, vertexStage(terrain.soil(p)).mul(0.85));
 
     // Distance value structure: the palette's cool far band, then its haze.
     const farBand = smoothstep(120.0, 320.0, d);
@@ -65,5 +92,5 @@ export function buildUnderpaint(fields: PaintFields, lut: PaletteLUT, atm: Atmos
     return vec4(finalColor, 1.0);
   })();
 
-  return material;
+  return { material, snapU };
 }

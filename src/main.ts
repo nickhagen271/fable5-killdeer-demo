@@ -55,7 +55,7 @@ async function main(): Promise<void> {
 
   // Interactive mode: the follow camera owns the view; 'c' toggles a free
   // orbit camera for inspection. Harness mode: shots and setPose only.
-  const followCam = params.harness ? null : new FollowCamera(world.camera);
+  const followCam = params.harness ? null : new FollowCamera(world.camera, world.terrain);
   let freeCam: OrbitControls | null = null;
   let freeMode = false;
 
@@ -85,6 +85,7 @@ async function main(): Promise<void> {
   hooks.setWindTime = (t): void => {
     world.wind.time = t;
   };
+  hooks.groundHeight = (x, z): number => world.terrain.heightCPU(x, z);
   hooks.foodInfo = () => {
     const bx = world.bird.position.x;
     const bz = world.bird.position.z;
@@ -190,7 +191,17 @@ async function main(): Promise<void> {
       hud.setInfo({ bird: world.bird.anim.state });
     }
 
+    // Streaming must never hitch: the JS-side cost of re-placing tiles is
+    // measured every frame, and any frame over 8 ms is logged (the gate).
+    const updateStart = performance.now();
     world.update(renderer);
+    const updateMs = performance.now() - updateStart;
+    if (updateMs > hooks.worstUpdateMs) hooks.worstUpdateMs = updateMs;
+    if (updateMs > 8) {
+      hooks.stallCount += 1;
+      console.warn(`[pkd] streaming stall: world.update took ${updateMs.toFixed(1)} ms`);
+    }
+
     if (post) post.render();
     else renderer.render(world.scene, world.camera);
 

@@ -1,5 +1,6 @@
 import { Vector2, Vector3, type Group } from "three/webgpu";
 import type { PaletteLUT } from "../paint/palette";
+import type { Terrain } from "../world/terrain";
 import { BirdAnim, type BirdPreset } from "./birdAnim";
 import { buildBirdRig, type BirdRig } from "./birdMesh";
 
@@ -25,12 +26,11 @@ export class Bird {
   heading = 0; // yaw, +Z forward at 0
   private readonly velocity = new Vector2(0, 0); // world XZ
 
-  constructor(lut: PaletteLUT, seed: number) {
+  constructor(lut: PaletteLUT, seed: number, private readonly terrain: Terrain) {
     this.rig = buildBirdRig(lut);
     // The visible ground is the TOP of the paint: the impasto strokes reach
-    // ~0.045 above the underpaint plane, so the bird stands on the paint
-    // surface, not inside it.
-    this.rig.root.position.y = 0.045;
+    // ~0.045 above the underpaint surface, which itself rides the terrain.
+    this.rig.root.position.y = 0.045 + terrain.heightCPU(0, 0);
     this.anim = new BirdAnim(seed);
     this.anim.apply(this.rig, 0);
   }
@@ -74,6 +74,7 @@ export class Bird {
 
     this.root.position.x += this.velocity.x * dt;
     this.root.position.z += this.velocity.y * dt;
+    this.root.position.y = 0.045 + this.terrain.heightCPU(this.root.position.x, this.root.position.z);
     this.root.rotation.y = this.heading;
 
     if (actions.peck) this.anim.requestPeck();

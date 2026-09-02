@@ -14,6 +14,7 @@ import {
   mx_noise_float,
   normalize,
   pow,
+  select,
   sin,
   smoothstep,
   sqrt,
@@ -31,6 +32,7 @@ import {
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
 import { PaintFields, SUN } from "./fields";
 import type { PaletteLUT } from "./palette";
+import type { Terrain } from "../world/terrain";
 
 /**
  * The world-anchored stroke field — the temporal-anchoring solution.
@@ -77,7 +79,7 @@ export class StrokeLOD {
   private readonly snapU: UniformNode<"vec2", Vector2>;
   private readonly snap = new Vector2(Number.NaN, Number.NaN);
 
-  constructor(cfg: StrokeLODConfig, fields: PaintFields, lut: PaletteLUT) {
+  constructor(cfg: StrokeLODConfig, fields: PaintFields, lut: PaletteLUT, terrain: Terrain) {
     this.cfg = cfg;
     const slots = cfg.grid * cfg.grid * cfg.strokesPerTile;
     const half = (cfg.grid - 1) / 2;
@@ -126,7 +128,10 @@ export class StrokeLOD {
 
       // Impasto follows the light: thick where lit, thin in shadow.
       const hAmp = mix(float(0.12), float(1.0), pow(lit, 1.5)).mul(r6.mul(0.5).add(0.72));
-      const cIdx = fields.colorIndex(p, r7);
+      // Bare soil patches repaint the ground strokes in earth notes.
+      const soil = terrain.soil(p);
+      let cIdx = fields.colorIndex(p, r7);
+      cIdx = select(soil.mul(0.9).greaterThan(hash(r7.mul(511.9))), float(3.0), cIdx);
 
       bufA.element(i).assign(vec4(px, pz, angle, len));
       bufB.element(i).assign(vec4(wid, hAmp, cIdx, r7));
@@ -164,7 +169,11 @@ export class StrokeLOD {
       const hWorld = wid.mul(0.3).mul(hAmp);
       const y = float(cfg.yBase).add(rand.mul(0.012)).add(ridge.mul(hWorld));
 
-      return vec3(recA.x.add(off.x), y, recA.y.add(off.y));
+      // Drape over the terrain at the vertex's own plan position, so long
+      // strokes follow the swell instead of bridging it.
+      const px2 = recA.x.add(off.x);
+      const pz2 = recA.y.add(off.y);
+      return vec3(px2, y.add(terrain.height(vec2(px2, pz2))), pz2);
     })();
 
     material.fragmentNode = Fn(() => {

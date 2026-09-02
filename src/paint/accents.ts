@@ -28,6 +28,7 @@ import {
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
 import type { PaintFields } from "./fields";
 import type { PaletteLUT } from "./palette";
+import type { Terrain } from "../world/terrain";
 
 /**
  * The edge pass, done with paint instead of a filter: occasional dark
@@ -50,7 +51,7 @@ export class AccentStrokes {
   private readonly snapU: UniformNode<"vec2", Vector2>;
   private readonly snap = new Vector2(Number.NaN, Number.NaN);
 
-  constructor(fields: PaintFields, lut: PaletteLUT) {
+  constructor(fields: PaintFields, lut: PaletteLUT, terrain: Terrain) {
     const slots = GRID * GRID * PER_TILE;
     const half = (GRID - 1) / 2;
 
@@ -115,7 +116,9 @@ export class AccentStrokes {
       const dir = vec2(cos(angle), sin(angle));
       const side = vec2(sin(angle), cos(angle).negate());
       const off = dir.mul(u.mul(len)).add(side.mul(v.mul(wid)));
-      return vec3(recA.x.add(off.x), 0.052, recA.y.add(off.y));
+      const px = recA.x.add(off.x);
+      const pz = recA.y.add(off.y);
+      return vec3(px, terrain.height(vec2(px, pz)).add(0.052), pz);
     })();
 
     material.fragmentNode = Fn(() => {

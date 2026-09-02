@@ -1,4 +1,4 @@
-import { Mesh, PerspectiveCamera, PlaneGeometry, Scene, Vector3, type WebGPURenderer } from "three/webgpu";
+import { InstancedMesh, PerspectiveCamera, PlaneGeometry, Scene, Vector3, type WebGPURenderer } from "three/webgpu";
 import { Bird } from "../bird/bird";
 import type { BirdPreset } from "../bird/birdAnim";
 import { AccentStrokes } from "../paint/accents";
@@ -9,9 +9,10 @@ import { buildUnderpaint } from "../paint/underpaint";
 import { FlowerField, GRASS_LODS, GrassLOD } from "../paint/vegetation";
 import { WindField } from "../paint/wind";
 import { FoodSystem } from "./food";
+import { Groves } from "./groves";
 import { HorizonBand } from "./horizon";
 import { buildSkyDome } from "./sky";
-import { buildTreeline } from "./treeline";
+import { Terrain } from "./terrain";
 
 /**
  * The world: one open sunlit ground surface painted with world-anchored
@@ -98,6 +99,7 @@ export interface PaintWorld {
   readonly food: FoodSystem;
   readonly wind: WindField;
   readonly palette: PaletteState;
+  readonly terrain: Terrain;
   applyShot(name: string): boolean;
   /** Per-frame: stream stroke tiles around the camera. */
   update(renderer: WebGPURenderer): void;
@@ -108,42 +110,51 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
   const palette = new PaletteState(paletteName);
   const lut = palette;
   const wind = new WindField(seed, fields);
+  const terrain = new Terrain(seed);
   const scene = new Scene();
 
-  // Subdivided so the underpaint's field noise can run at vertex rate.
-  const ground = new Mesh(new PlaneGeometry(900, 900, 300, 300), buildUnderpaint(fields, lut, palette.atm));
-  ground.rotation.x = -Math.PI / 2;
+  // The ground is a camera-following draped grid. It is an InstancedMesh
+  // with a single instance ON PURPOSE: positionNode silently collapses on
+  // plain meshes on this stack (see horizon.ts), but is reliable on the
+  // instanced path every other system already uses.
+  const groundGeo = new PlaneGeometry(520, 520, 240, 240);
+  groundGeo.rotateX(-Math.PI / 2);
+  const underpaint = buildUnderpaint(fields, lut, palette.atm, terrain);
+  const ground = new InstancedMesh(groundGeo, underpaint.material, 1);
+  ground.frustumCulled = false;
   scene.add(ground);
 
-  scene.add(buildSkyDome(fields, wind, palette.atm));
-  scene.add(buildTreeline(seed, lut, palette.atm));
+  const sky = buildSkyDome(fields, wind, palette.atm);
+  scene.add(sky);
+  const groves = new Groves(fields, lut, palette.atm, terrain);
+  scene.add(groves.mesh);
   const horizon = new HorizonBand(seed, Math.atan2(-0.55, -0.42), fields, lut, palette.atm);
   scene.add(horizon.group);
 
-  const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut));
+  const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut, terrain));
   let strokeCount = 0;
   for (const lod of lods) {
     scene.add(lod.mesh);
     strokeCount += lod.mesh.count;
   }
 
-  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut, wind));
+  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut, wind, terrain));
   for (const g of grass) {
     scene.add(g.mesh);
     strokeCount += g.mesh.count;
   }
-  const flowers = new FlowerField(fields, lut, wind);
+  const flowers = new FlowerField(fields, lut, wind, terrain);
   scene.add(flowers.mesh);
   strokeCount += flowers.mesh.count;
 
-  const accents = new AccentStrokes(fields, lut);
+  const accents = new AccentStrokes(fields, lut, terrain);
   scene.add(accents.mesh);
   strokeCount += accents.mesh.count;
 
-  const bird = new Bird(lut, seed);
+  const bird = new Bird(lut, seed, terrain);
   scene.add(bird.root);
 
-  const food = new FoodSystem(seed, lut);
+  const food = new FoodSystem(seed, lut, terrain);
   scene.add(food.mesh);
 
   // The forage connect: when the bill meets the ground, the nearest live
@@ -159,20 +170,32 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
   const applyShot = (name: string): boolean => {
     const shot = SHOTS.find((s) => s.name === name);
     if (!shot) return false;
+    // Stock shots were framed on flat ground: lift them by the terrain so
+    // the same composition holds on any swell.
     camera.position.copy(shot.position);
-    camera.lookAt(shot.target);
+    camera.position.y += terrain.heightCPU(shot.position.x, shot.position.z);
+    const target = shot.target.clone();
+    target.y += terrain.heightCPU(shot.target.x, shot.target.z);
+    camera.lookAt(target);
     if (shot.bird) bird.applyPreset(shot.bird.preset, shot.bird.phase);
     return true;
   };
   applyShot("vista");
 
   const update = (renderer: WebGPURenderer): void => {
-    for (const lod of lods) lod.update(renderer, camera.position.x, camera.position.z);
-    for (const g of grass) g.update(renderer, camera.position.x, camera.position.z);
-    flowers.update(renderer, camera.position.x, camera.position.z);
-    accents.update(renderer, camera.position.x, camera.position.z);
-    horizon.update(camera.position.x, camera.position.z);
+    const cx = camera.position.x;
+    const cz = camera.position.z;
+    for (const lod of lods) lod.update(renderer, cx, cz);
+    for (const g of grass) g.update(renderer, cx, cz);
+    flowers.update(renderer, cx, cz);
+    accents.update(renderer, cx, cz);
+    groves.update(renderer, cx, cz);
+    horizon.update(cx, cz);
+    // Ground grid and sky dome follow the camera (snapped so vertices never
+    // swim); the world itself never ends.
+    underpaint.snapU.value.set(Math.round(cx / 2) * 2, Math.round(cz / 2) * 2);
+    sky.position.set(cx, 0, cz);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, palette, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, palette, terrain, applyShot, update };
 }

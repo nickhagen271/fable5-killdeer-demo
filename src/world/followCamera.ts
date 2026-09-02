@@ -1,5 +1,6 @@
 import { Vector3, type PerspectiveCamera } from "three/webgpu";
 import type { Bird } from "../bird/bird";
+import type { Terrain } from "./terrain";
 
 /**
  * Third-person follow: behind and slightly above the killdeer, smooth and
@@ -15,7 +16,10 @@ export class FollowCamera {
   private readonly lookPoint = new Vector3();
   private initialized = false;
 
-  constructor(private readonly camera: PerspectiveCamera) {}
+  constructor(
+    private readonly camera: PerspectiveCamera,
+    private readonly terrain: Terrain,
+  ) {}
 
   snap(bird: Bird): void {
     this.camera.position.copy(this.desiredPos(bird));
@@ -32,7 +36,8 @@ export class FollowCamera {
     const kp = 1 - Math.exp(-POS_RATE * dt);
     const kl = 1 - Math.exp(-LOOK_RATE * dt);
     this.camera.position.lerp(this.desiredPos(bird), kp);
-    if (this.camera.position.y < 0.18) this.camera.position.y = 0.18;
+    const floor = this.terrain.heightCPU(this.camera.position.x, this.camera.position.z) + 0.18;
+    if (this.camera.position.y < floor) this.camera.position.y = floor;
     this.lookPoint.lerp(this.desiredLook(bird), kl);
     this.camera.lookAt(this.lookPoint);
   }

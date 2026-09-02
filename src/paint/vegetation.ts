@@ -32,6 +32,7 @@ import type UniformNode from "three/src/nodes/core/UniformNode.js";
 import { PaintFields, SUN } from "./fields";
 import type { PaletteLUT } from "./palette";
 import type { WindField } from "./wind";
+import type { Terrain } from "../world/terrain";
 
 /**
  * Upright vegetation strokes: grass blades and wildflowers. Same contract as
@@ -90,7 +91,7 @@ export class GrassLOD {
   readonly mesh: InstancedMesh;
   private readonly streamer: Streamer;
 
-  constructor(cfg: GrassLODConfig, fields: PaintFields, lut: PaletteLUT, wind: WindField) {
+  constructor(cfg: GrassLODConfig, fields: PaintFields, lut: PaletteLUT, wind: WindField, terrain: Terrain) {
     const slots = cfg.grid * cfg.grid * cfg.perTile;
     const half = (cfg.grid - 1) / 2;
 
@@ -121,10 +122,13 @@ export class GrassLOD {
       const p = vec2(px, pz).toVar();
 
       // Grass grows in tufts: a clump field gates density so bare ground
-      // strokes read between them. Shadow masses keep grass but darker.
-      // Tight tufts: dense inside clumps, sparse strays between them.
+      // strokes read between them. Shadow masses keep grass but darker;
+      // bare soil patches thin it almost to nothing.
       const clump = fields.n01(p, 0.5, 143.7);
-      const keep = pow(smoothstep(0.3, 0.64, clump), 1.4).mul(0.85).add(0.08);
+      const keep = pow(smoothstep(0.3, 0.64, clump), 1.4)
+        .mul(0.85)
+        .add(0.08)
+        .mul(float(1.0).sub(terrain.soil(p).mul(0.92)));
       const lit = fields.litness(p);
 
       const azimuth = r3.mul(PI.mul(2.0));
@@ -181,7 +185,8 @@ export class GrassLOD {
       const windDisp = wind
         .displacement(vec2(recA.x, recA.y), rand, 0.16)
         .mul(t.mul(t).mul(height.mul(3.2).min(1.2)));
-      const pos = vec3(recA.x, 0.02, recA.y)
+      const rootY = terrain.height(vec2(recA.x, recA.y)).add(0.02);
+      const pos = vec3(recA.x, rootY, recA.y)
         .add(side.mul(across.mul(width).mul(taper)))
         .add(leanDir.mul(bend))
         .add(vec3(0.0, t.mul(height).mul(float(1.0).sub(lean.mul(bend).mul(0.3))), 0.0))
@@ -286,7 +291,7 @@ export class FlowerField {
   readonly mesh: InstancedMesh;
   private readonly streamer: Streamer;
 
-  constructor(fields: PaintFields, lut: PaletteLUT, wind: WindField) {
+  constructor(fields: PaintFields, lut: PaletteLUT, wind: WindField, terrain: Terrain) {
     const cfg = FLOWER_CFG;
     const slots = cfg.grid * cfg.grid * cfg.perTile;
     const half = (cfg.grid - 1) / 2;
@@ -322,7 +327,7 @@ export class FlowerField {
       // of loners so no view is flowerless.
       const drift = fields.n01(p, 0.09, 71.9);
       const patch = smoothstep(0.42, 0.72, drift);
-      const open = float(1.0).sub(fields.shadowMask(p));
+      const open = float(1.0).sub(fields.shadowMask(p)).mul(float(1.0).sub(terrain.soil(p)));
       const keep = patch.mul(0.85).max(0.06).mul(open);
       const bloomAlive = select(keep.greaterThan(hash(group.mul(5.87).add(tileHash.mul(3.0)))), float(1.0), float(0.0));
       // Dab 0 always; dabs 1–2 are the overlapping second and third touches.
@@ -373,7 +378,7 @@ export class FlowerField {
       const aspect = dB.y;
       const rand = dB.w;
 
-      const center = vec3(dA.x, dA.z, dA.y).toVar();
+      const center = vec3(dA.x, dA.z.add(terrain.height(vec2(dA.x, dA.y))), dA.y).toVar();
       const windDisp = wind.displacement(vec2(dA.x, dA.y), rand, 0.2).mul(dA.z.mul(3.0).min(1.1));
       center.addAssign(windDisp);
 

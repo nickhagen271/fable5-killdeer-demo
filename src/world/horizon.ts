@@ -111,7 +111,8 @@ function buildRing(
       const frac = r / HEIGHT_SEGMENTS;
       const i = (r * cols + c) * 3;
       positions[i] = x;
-      positions[i + 1] = frac * h;
+      // Base sunk to -8 m so terrain swells never open a gap under the band.
+      positions[i + 1] = -8 + frac * (h + 8);
       positions[i + 2] = z;
       info[i] = frac;
       info[i + 1] = az;
