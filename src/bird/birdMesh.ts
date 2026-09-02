@@ -30,6 +30,8 @@ export interface BirdRig {
   readonly neckG: Group;
   readonly headG: Group;
   readonly tailG: Group;
+  /** The tail cone itself — scaled sideways to FAN it (rufous flash). */
+  readonly tailMesh: Mesh;
   readonly hips: readonly [Group, Group];
   readonly feet: readonly [Group, Group];
 }
@@ -41,7 +43,8 @@ function bodyMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
   const t = local.z.add(BODY_LEN / 2).div(BODY_LEN); // 0 tail → 1 breast/neck
   const rad = local.xy.length().max(0.0001);
   const belly = local.y.negate().div(rad); // 1 = underside, -1 = back
-  const wob = mx_noise_float(local.mul(95.0)).mul(0.04);
+  // Confident single-stroke band edges: barely broken, never smudged.
+  const wob = mx_noise_float(local.mul(95.0)).mul(0.018);
   const tw = t.add(wob);
 
   let row: FloatExpr = float(ROW.birdTaupe);
@@ -62,36 +65,40 @@ function bodyMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
 }
 
 function headMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
-  const n = local.div(0.029).toVar();
-  const wob = mx_noise_float(local.mul(140.0)).mul(0.09);
+  const n = local.div(0.031).toVar();
+  // Bands are laid as confident single strokes: only a whisper of wobble.
+  const wob = mx_noise_float(local.mul(140.0)).mul(0.035);
   const ny = n.y.add(wob);
   const nz = n.z.add(wob);
 
   let row: FloatExpr = float(ROW.birdTaupe); // crown, nape, upper cheek
   // White chin and throat, wrapping down to the collar.
   row = select(ny.lessThan(-0.3), float(ROW.birdCream), row);
-  // White supercilium band above the eye line.
-  row = select(ny.greaterThan(0.18).and(ny.lessThan(0.44)).and(nz.lessThan(0.65)), float(ROW.birdCream), row);
+  // White supercilium band running back from above the eye.
+  row = select(ny.greaterThan(0.2).and(ny.lessThan(0.46)).and(nz.lessThan(0.65)), float(ROW.birdCream), row);
   // White forehead patch above the bill.
-  row = select(nz.greaterThan(0.62).and(ny.greaterThan(-0.05)).and(ny.lessThan(0.42)), float(ROW.birdCream), row);
-  // Black frontal bar separating forehead from crown.
-  row = select(ny.greaterThan(0.42).and(ny.lessThan(0.58)).and(nz.greaterThan(0.45)), float(ROW.birdBlack), row);
-  // Umber eye stripe across the cheeks — narrow, sides only, so the dark eye
-  // and orange ring stay legible inside it.
-  row = select(
-    ny.greaterThan(-0.04).and(ny.lessThan(0.18)).and(n.x.abs().greaterThan(0.42)).and(nz.lessThan(0.7)),
-    float(ROW.birdUmber),
-    row,
-  );
+  row = select(nz.greaterThan(0.6).and(ny.greaterThan(-0.02)).and(ny.lessThan(0.44)), float(ROW.birdCream), row);
+  // Black frontal bar separating forehead from crown, between the eyes.
+  row = select(ny.greaterThan(0.44).and(ny.lessThan(0.62)).and(nz.greaterThan(0.4)), float(ROW.birdBlack), row);
+  // BLACK face band below the eye, bill to cheek, wrapping under the chin
+  // (the identifying face pattern — a bold single stroke, not a smudge).
+  const sideBand = ny.greaterThan(-0.1).and(ny.lessThan(0.16)).and(n.x.abs().greaterThan(0.34)).and(nz.lessThan(0.75));
+  const chinWrap = ny.greaterThan(-0.52).and(ny.lessThan(-0.24)).and(nz.greaterThan(0.4));
+  row = select(sideBand.or(chinWrap), float(ROW.birdBlack), row);
   return row;
 }
 
 function wingMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
-  const wob = mx_noise_float(local.mul(120.0)).mul(0.008);
+  const wob = mx_noise_float(local.mul(120.0)).mul(0.006);
   let row: FloatExpr = float(ROW.birdTaupe);
+  // Scalloped feather rows: thin pale fringes arcing across the folded wing
+  // (the knife-edge highlights of the reference paintings).
+  const rowsAlong = local.z.mul(160.0).add(local.y.mul(60.0)).add(mx_noise_float(local.mul(300.0)).mul(1.6));
+  const fringe = rowsAlong.fract().lessThan(0.16);
+  row = select(fringe.and(local.z.greaterThan(-0.03)), float(ROW.birdCream), row);
   // Dark folded primaries toward the tip; a cream edge along the low border.
-  row = select(local.z.add(wob).lessThan(-0.028), float(ROW.birdUmber), row);
-  row = select(local.y.add(wob).lessThan(-0.014), float(ROW.birdCream), row);
+  row = select(local.z.add(wob).lessThan(-0.034), float(ROW.birdUmber), row);
+  row = select(local.y.add(wob).lessThan(-0.015), float(ROW.birdCream), row);
   return row;
 }
 
@@ -159,26 +166,28 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
   bodyG.add(bodyMesh);
   root.add(bodyG);
 
-  // --- wings (folded panels, tips crossing toward the tail) ----------------
+  // --- wings: long pointed folded panels, tips reaching the tail base -----
   for (const s of [-1, 1] as const) {
     const wingGeo = new SphereGeometry(1, 18, 12);
-    wingGeo.scale(0.011, 0.02, 0.07);
+    wingGeo.scale(0.0095, 0.019, 0.085);
     const wing = new Mesh(wingGeo, matWing);
-    wing.position.set(s * 0.0295, 0.02, -0.022);
-    wing.rotation.x = -0.18;
-    wing.rotation.y = s * -0.14;
+    wing.position.set(s * 0.0285, 0.024, -0.03);
+    wing.rotation.x = -0.22;
+    wing.rotation.y = s * -0.12;
     bodyG.add(wing);
   }
 
   // --- tail ----------------------------------------------------------------
+  // Tail: long for a plover, wedge-shaped; the mesh is kept for fanning
+  // (scale.x spreads it and the rufous flashes).
   const tailG = new Group();
   tailG.position.set(0, 0.008, -0.06);
-  const tailGeo = new ConeGeometry(0.021, 0.086, 10);
+  const tailGeo = new ConeGeometry(0.022, 0.095, 10);
   tailGeo.rotateX(-Math.PI / 2); // point → -Z
-  tailGeo.translate(0, 0, -0.043);
-  const tail = new Mesh(tailGeo, matTail);
-  tail.scale.set(1, 0.4, 1);
-  tailG.add(tail);
+  tailGeo.translate(0, 0, -0.0475);
+  const tailMesh = new Mesh(tailGeo, matTail);
+  tailMesh.scale.set(1, 0.38, 1);
+  tailG.add(tailMesh);
   tailG.rotation.x = 0.05;
   bodyG.add(tailG);
 
@@ -187,32 +196,37 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
   neckG.position.set(0, 0.034, 0.05);
   bodyG.add(neckG);
 
-  const neckGeo = new CylinderGeometry(0.014, 0.02, 0.024, 12);
+  // Very short neck: the head sits almost on the shoulders.
+  const neckGeo = new CylinderGeometry(0.015, 0.021, 0.02, 12);
   const neck = new Mesh(neckGeo, matBody);
-  neck.position.set(0, 0.008, 0.004);
+  neck.position.set(0, 0.006, 0.004);
   neck.rotation.x = 0.25;
   neckG.add(neck);
 
   const headG = new Group();
-  headG.position.set(0, 0.024, 0.013);
+  headG.position.set(0, 0.02, 0.012);
   neckG.add(headG);
 
-  const headGeo = new SphereGeometry(0.029, 22, 16);
+  // Rounded plover head — large for the body, almost no neck showing.
+  const headGeo = new SphereGeometry(0.031, 22, 16);
   headGeo.scale(0.9, 1, 1.06);
   headG.add(new Mesh(headGeo, matHead));
 
-  const billGeo = new ConeGeometry(0.0048, 0.03, 10);
+  // Bill: short, straight, black — about the head's front-to-back length.
+  const billGeo = new ConeGeometry(0.0042, 0.032, 10);
   billGeo.rotateX(Math.PI / 2); // point → +Z
   const bill = new Mesh(billGeo, matBill);
-  bill.position.set(0, -0.005, 0.038);
-  bill.rotation.x = -0.06;
+  bill.position.set(0, -0.006, 0.041);
+  bill.rotation.x = -0.05;
   headG.add(bill);
 
+  // The eye: LARGE, dark, set high and forward, ringed in hot red-orange —
+  // the single most identifying detail, so it gets size and a thick ring.
   for (const s of [-1, 1] as const) {
-    const eye = new Mesh(new SphereGeometry(0.0055, 12, 10), matEye);
-    eye.position.set(s * 0.0215, 0.004, 0.01);
+    const eye = new Mesh(new SphereGeometry(0.0068, 12, 10), matEye);
+    eye.position.set(s * 0.0225, 0.007, 0.012);
     headG.add(eye);
-    const ring = new Mesh(new TorusGeometry(0.0066, 0.0017, 8, 20), matRing);
+    const ring = new Mesh(new TorusGeometry(0.008, 0.0023, 8, 20), matRing);
     ring.position.copy(eye.position);
     ring.rotation.y = Math.PI / 2;
     headG.add(ring);
@@ -226,7 +240,7 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
     hip.position.set(s * 0.0165, 0.085, -0.004);
     root.add(hip);
 
-    const tarsus = new Mesh(new CylinderGeometry(0.0024, 0.0022, 0.08, 8), matLeg);
+    const tarsus = new Mesh(new CylinderGeometry(0.002, 0.0018, 0.08, 8), matLeg);
     tarsus.position.y = -0.04;
     hip.add(tarsus);
 
@@ -253,6 +267,7 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
     neckG,
     headG,
     tailG,
+    tailMesh,
     hips: [hips[0], hips[1]],
     feet: [feet[0], feet[1]],
   };

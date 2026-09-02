@@ -52,7 +52,9 @@ export function buildBirdMaterial(lut: PaletteLUT, marking: MarkingFn, options: 
     const flowV = vec3(flow[0], flow[1], flow[2]);
     const along = local.dot(flowV);
     const across = local.sub(flowV.mul(along));
-    const bristle = mx_noise_float(vec3(across.mul(220.0).xy, along.mul(38.0))).mul(0.5).add(0.5);
+    // Higher stroke density than anything else in frame: the bird is the
+    // subject, painted with the crispest touches.
+    const bristle = mx_noise_float(vec3(across.mul(300.0).xy, along.mul(52.0))).mul(0.5).add(0.5);
 
     // Warm-cool form light. The floor keeps shadows luminous, never black.
     const form = clamp(normalWorld.dot(SUN), -1.0, 1.0).mul(0.5).add(0.5);
@@ -60,7 +62,7 @@ export function buildBirdMaterial(lut: PaletteLUT, marking: MarkingFn, options: 
       .sub(0.5)
       .mul(0.05);
     const value = clamp(
-      form.mul(0.58).add(0.3).add(bristle.sub(0.5).mul(0.12)).add(dither).add(valueShift),
+      form.mul(0.58).add(0.3).add(bristle.sub(0.5).mul(0.2)).add(dither).add(valueShift),
       0.04,
       0.97,
     );

@@ -8,8 +8,8 @@ import type { BirdRig } from "./birdMesh";
  * stops, a tilt and a peck, long watchful stillness.
  */
 
-export type BirdState = "idle" | "run" | "peck" | "alert" | "preen";
-export type BirdPreset = "idle" | "run" | "peck" | "alert";
+export type BirdState = "idle" | "run" | "peck" | "alert" | "preen" | "fan";
+export type BirdPreset = "idle" | "run" | "peck" | "alert" | "fan";
 
 interface Pose {
   bodyY: number;
@@ -18,10 +18,22 @@ interface Pose {
   neckPitch: number;
   headPitch: number;
   headYaw: number;
+  headRoll: number;
   tailPitch: number;
+  tailFan: number;
 }
 
-const REST: Pose = { bodyY: 0, bodyPitch: 0.02, bodyRoll: 0, neckPitch: 0.05, headPitch: 0, headYaw: 0, tailPitch: 0.1 };
+const REST: Pose = {
+  bodyY: 0,
+  bodyPitch: 0.02,
+  bodyRoll: 0,
+  neckPitch: 0.05,
+  headPitch: 0,
+  headYaw: 0,
+  headRoll: 0,
+  tailPitch: 0.1,
+  tailFan: 0,
+};
 
 function approach(current: number, target: number, rate: number, dt: number): number {
   const k = 1 - Math.exp(-rate * dt);
@@ -46,6 +58,11 @@ export class BirdAnim {
   private nextAlertAt = 8;
   private nextPreenAt = 20;
   private pendingPeckAt = Number.POSITIVE_INFINITY;
+  /** The signature stop: run → halt → one sharp head bob. */
+  private bobPending = false;
+  /** Ground-look cue (worm within 2 m): -1/+1 tilt side, 0 = none. */
+  private groundLookSide = 0;
+  private groundLookUntil = 0;
 
   constructor(seed: number) {
     this.rng = new Rng(seed ^ 0x5eed).fork("bird");
@@ -67,6 +84,15 @@ export class BirdAnim {
     if (this.state === "idle") this.enter("alert");
   }
 
+  /**
+   * A worm is within noticing range: the head tilts to one side toward the
+   * ground (Pillar B "Look" — the only find-a-worm hint the game gives).
+   */
+  noticeFood(side: -1 | 1): void {
+    this.groundLookSide = side;
+    this.groundLookUntil = this.t + 0.6;
+  }
+
   private enter(state: BirdState): void {
     this.state = state;
     this.stateT = 0;
@@ -81,8 +107,9 @@ export class BirdAnim {
     // --- state transitions --------------------------------------------------
     if (this.state === "run" && !moving) {
       this.enter("idle");
+      this.bobPending = true; // abrupt stop, then the single head bob
       // The signature: stop, a beat, then usually a peck.
-      if (this.rng.next() < 0.6) this.pendingPeckAt = this.stateT + this.rng.range(0.2, 0.55);
+      if (this.rng.next() < 0.6) this.pendingPeckAt = this.stateT + this.rng.range(0.35, 0.7);
     } else if (this.state !== "run" && moving && this.state !== "peck") {
       this.enter("run");
       this.pendingPeckAt = Number.POSITIVE_INFINITY;
@@ -97,7 +124,9 @@ export class BirdAnim {
         this.enter("alert");
       } else if (this.t > this.nextPreenAt) {
         this.nextPreenAt = this.t + this.rng.range(14, 30);
-        this.enter("preen");
+        // Idle grooming beats alternate: preen, or fan the tail and flash
+        // the rufous orange.
+        this.enter(this.rng.next() < 0.55 ? "preen" : "fan");
       }
     }
     // Bill meets the ground as the dip bottoms out.
@@ -118,6 +147,7 @@ export class BirdAnim {
     }
     if (this.state === "alert" && this.stateT > this.alertHold) this.enter("idle");
     if (this.state === "preen" && this.stateT > 1.6) this.enter("idle");
+    if (this.state === "fan" && this.stateT > 1.2) this.enter("idle");
 
     // --- pose targets ---------------------------------------------------------
     const target: Pose = { ...REST };
@@ -125,12 +155,25 @@ export class BirdAnim {
 
     switch (this.state) {
       case "run": {
-        target.bodyPitch = 0.12 * speed01 + 0.02;
+        // Nose-down dash; the head counter-pitches so it stays steady the
+        // way a running plover's does.
+        target.bodyPitch = 0.16 * speed01 + 0.03;
         target.neckPitch = -0.06;
+        target.headPitch = -0.6 * target.bodyPitch;
         target.tailPitch = 0.16;
         break;
       }
       case "idle": {
+        // The stop lands abruptly, then ONE sharp head bob.
+        if (this.bobPending && this.stateT > 0.08) {
+          if (this.stateT < 0.42) {
+            const u = (this.stateT - 0.08) / 0.34;
+            target.neckPitch = 0.05 + Math.sin(u * Math.PI) * 0.34;
+            rate = 22;
+          } else {
+            this.bobPending = false;
+          }
+        }
         // Watchful micro-motion: weight shifts and head scanning.
         if (this.t > this.nextLookAt) {
           this.nextLookAt = this.t + this.rng.range(1.2, 3.8);
@@ -139,7 +182,7 @@ export class BirdAnim {
         target.headYaw = this.lookTarget;
         target.bodyRoll = Math.sin(this.t * 0.9) * 0.025;
         target.bodyY = Math.sin(this.t * 1.7) * 0.0012;
-        rate = 5;
+        if (!this.bobPending) rate = 5;
         break;
       }
       case "peck": {
@@ -170,6 +213,23 @@ export class BirdAnim {
         rate = 7;
         break;
       }
+      case "fan": {
+        // Tail spread and lifted: the rufous rump and orange tail flash.
+        const u = Math.min(this.stateT / 1.2, 1);
+        const env = Math.sin(u * Math.PI);
+        target.tailFan = env;
+        target.tailPitch = -0.38 * env;
+        target.bodyPitch = 0.1 * env;
+        rate = 9;
+        break;
+      }
+    }
+
+    // Ground-look cue overrides the head: tilt toward the noticed worm.
+    if (this.t < this.groundLookUntil && (this.state === "idle" || this.state === "alert")) {
+      target.headRoll = this.groundLookSide * 0.5;
+      target.headPitch = 0.38;
+      target.headYaw = this.groundLookSide * 0.35;
     }
 
     const p = this.pose;
@@ -179,7 +239,9 @@ export class BirdAnim {
     p.neckPitch = approach(p.neckPitch, target.neckPitch, rate, dt);
     p.headPitch = approach(p.headPitch, target.headPitch, rate, dt);
     p.headYaw = approach(p.headYaw, target.headYaw, rate, dt);
+    p.headRoll = approach(p.headRoll, target.headRoll, rate, dt);
     p.tailPitch = approach(p.tailPitch, target.tailPitch, rate, dt);
+    p.tailFan = approach(p.tailFan, target.tailFan, rate, dt);
 
     // --- gait ----------------------------------------------------------------
     const stepRate = 4 + speed01 * 6.5; // steps per second
@@ -198,7 +260,6 @@ export class BirdAnim {
     let gait = 0;
     switch (preset) {
       case "idle":
-        p.headYaw = 0.45;
         p.bodyRoll = 0.02;
         break;
       case "run":
@@ -219,6 +280,11 @@ export class BirdAnim {
         p.neckPitch = -0.4;
         p.bodyPitch = -0.05;
         break;
+      case "fan":
+        p.tailFan = 1;
+        p.tailPitch = -0.38;
+        p.bodyPitch = 0.1;
+        break;
     }
     Object.assign(this.pose, p);
     this.gaitAmp = amp;
@@ -235,8 +301,9 @@ export class BirdAnim {
     rig.bodyG.position.y = 0.088 + p.bodyY + bob;
     rig.bodyG.rotation.set(p.bodyPitch, 0, p.bodyRoll);
     rig.neckG.rotation.x = p.neckPitch;
-    rig.headG.rotation.set(p.headPitch, p.headYaw, 0);
+    rig.headG.rotation.set(p.headPitch, p.headYaw, p.headRoll);
     rig.tailG.rotation.x = 0.1 + p.tailPitch;
+    rig.tailMesh.scale.x = 1 + p.tailFan * 1.4; // the fan: rufous spreads
 
     for (let i = 0; i < 2; i++) {
       const leg = i === 0 ? this.gaitPhase : (this.gaitPhase + 0.5) % 1;

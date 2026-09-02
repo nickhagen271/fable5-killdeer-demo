@@ -3,6 +3,7 @@ import {
   Fn,
   cameraPosition,
   clamp,
+  float,
   hash,
   mix,
   positionLocal,
@@ -40,6 +41,7 @@ export function buildUnderpaint(
   lut: PaletteLUT,
   atm: AtmosphereUniforms,
   terrain: Terrain,
+  bare = false,
 ): UnderpaintBuild {
   const material = new NodeMaterial();
 
@@ -51,6 +53,24 @@ export function buildUnderpaint(
     const wz = positionLocal.z.add(snapU.y);
     return vec3(wx, terrain.height(vec2(wx, wz)), wz);
   })();
+
+  if (bare) {
+    // Turnaround backdrop: a plain toned-canvas ground — cream wash, weave
+    // tooth, nothing else. The bird is judged against it alone.
+    material.fragmentNode = Fn(() => {
+      const p = positionWorld.xz;
+      const d = p.sub(cameraPosition.xz).length();
+      const wobble = fields.n01(p, 4.0, 5.5).mul(2.4);
+      const weave = sin(p.x.mul(1150.0).add(wobble)).mul(sin(p.y.mul(1150.0).sub(wobble)));
+      const tooth = weave.mul(0.05).mul(smoothstep(9.0, 1.5, d));
+      const wash = fields.n01(p, 0.6, 47.7).mul(0.08);
+      const value = clamp(float(0.62).add(tooth).add(wash), 0.0, 1.0);
+      const canvas = texture(lut.texture, vec2(value, (15 + 0.5) / lut.rows)).rgb; // birdCream row
+      const finalColor = mix(canvas, atm.haze, smoothstep(30.0, 200.0, d).mul(0.8));
+      return vec4(finalColor, 1.0);
+    })();
+    return { material, snapU };
+  }
 
   material.fragmentNode = Fn(() => {
     const p = positionWorld.xz;

@@ -88,6 +88,12 @@ const SHOTS: readonly Shot[] = [
     target: new Vector3(-55, 13, -42),
     bird: { preset: "idle", phase: 0 },
   },
+  // Phase 3 turnaround (shot with ?bare=1): side, front, three-quarter, and
+  // the fanned tail, against the plain canvas ground.
+  { name: "td_side", position: new Vector3(0.52, 0.17, 0.0), target: new Vector3(0, 0.13, 0), bird: { preset: "idle", phase: 0 } },
+  { name: "td_front", position: new Vector3(0, 0.16, 0.52), target: new Vector3(0, 0.13, 0), bird: { preset: "idle", phase: 0 } },
+  { name: "td_34", position: new Vector3(0.38, 0.2, 0.4), target: new Vector3(0, 0.12, 0), bird: { preset: "idle", phase: 0 } },
+  { name: "td_fan", position: new Vector3(0.42, 0.24, -0.34), target: new Vector3(0, 0.12, 0.02), bird: { preset: "fan", phase: 0 } },
 ];
 
 export interface PaintWorld {
@@ -105,7 +111,7 @@ export interface PaintWorld {
   update(renderer: WebGPURenderer): void;
 }
 
-export function buildPaintWorld(seed: number, aspect: number, paletteName: PaletteName): PaintWorld {
+export function buildPaintWorld(seed: number, aspect: number, paletteName: PaletteName, bare = false): PaintWorld {
   const fields = new PaintFields(seed);
   const palette = new PaletteState(paletteName);
   const lut = palette;
@@ -116,40 +122,49 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
   // The ground is a camera-following draped grid. It is an InstancedMesh
   // with a single instance ON PURPOSE: positionNode silently collapses on
   // plain meshes on this stack (see horizon.ts), but is reliable on the
-  // instanced path every other system already uses.
+  // instanced path every other system already uses. In bare (turnaround)
+  // mode the same grid wears a plain toned-canvas material instead.
   const groundGeo = new PlaneGeometry(520, 520, 240, 240);
   groundGeo.rotateX(-Math.PI / 2);
-  const underpaint = buildUnderpaint(fields, lut, palette.atm, terrain);
+  const underpaint = buildUnderpaint(fields, lut, palette.atm, terrain, bare);
   const ground = new InstancedMesh(groundGeo, underpaint.material, 1);
   ground.frustumCulled = false;
   scene.add(ground);
 
   const sky = buildSkyDome(fields, wind, palette.atm);
   scene.add(sky);
-  const groves = new Groves(fields, lut, palette.atm, terrain);
-  scene.add(groves.mesh);
-  const horizon = new HorizonBand(seed, Math.atan2(-0.55, -0.42), fields, lut, palette.atm);
-  scene.add(horizon.group);
 
-  const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut, terrain));
   let strokeCount = 0;
-  for (const lod of lods) {
-    scene.add(lod.mesh);
-    strokeCount += lod.mesh.count;
-  }
+  const streamers: { update(renderer: WebGPURenderer, x: number, z: number): void }[] = [];
+  const horizon = bare ? null : new HorizonBand(seed, Math.atan2(-0.55, -0.42), fields, lut, palette.atm);
+  if (!bare && horizon) {
+    const groves = new Groves(fields, lut, palette.atm, terrain);
+    scene.add(groves.mesh);
+    streamers.push(groves);
+    scene.add(horizon.group);
 
-  const grass = GRASS_LODS.map((cfg) => new GrassLOD(cfg, fields, lut, wind, terrain));
-  for (const g of grass) {
-    scene.add(g.mesh);
-    strokeCount += g.mesh.count;
-  }
-  const flowers = new FlowerField(fields, lut, wind, terrain);
-  scene.add(flowers.mesh);
-  strokeCount += flowers.mesh.count;
+    for (const cfg of STROKE_LODS) {
+      const lod = new StrokeLOD(cfg, fields, lut, terrain);
+      scene.add(lod.mesh);
+      strokeCount += lod.mesh.count;
+      streamers.push(lod);
+    }
+    for (const cfg of GRASS_LODS) {
+      const g = new GrassLOD(cfg, fields, lut, wind, terrain);
+      scene.add(g.mesh);
+      strokeCount += g.mesh.count;
+      streamers.push(g);
+    }
+    const flowers = new FlowerField(fields, lut, wind, terrain);
+    scene.add(flowers.mesh);
+    strokeCount += flowers.mesh.count;
+    streamers.push(flowers);
 
-  const accents = new AccentStrokes(fields, lut, terrain);
-  scene.add(accents.mesh);
-  strokeCount += accents.mesh.count;
+    const accents = new AccentStrokes(fields, lut, terrain);
+    scene.add(accents.mesh);
+    strokeCount += accents.mesh.count;
+    streamers.push(accents);
+  }
 
   const bird = new Bird(lut, seed, terrain);
   scene.add(bird.root);
@@ -185,12 +200,8 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
   const update = (renderer: WebGPURenderer): void => {
     const cx = camera.position.x;
     const cz = camera.position.z;
-    for (const lod of lods) lod.update(renderer, cx, cz);
-    for (const g of grass) g.update(renderer, cx, cz);
-    flowers.update(renderer, cx, cz);
-    accents.update(renderer, cx, cz);
-    groves.update(renderer, cx, cz);
-    horizon.update(cx, cz);
+    for (const s of streamers) s.update(renderer, cx, cz);
+    horizon?.update(cx, cz);
     // Ground grid and sky dome follow the camera (snapped so vertices never
     // swim); the world itself never ends.
     underpaint.snapU.value.set(Math.round(cx / 2) * 2, Math.round(cz / 2) * 2);

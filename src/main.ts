@@ -35,7 +35,12 @@ async function main(): Promise<void> {
   }
 
   bootMsg("placing strokes", 0.7);
-  const world = buildPaintWorld(params.seed, container.clientWidth / container.clientHeight, params.palette);
+  const world = buildPaintWorld(
+    params.seed,
+    container.clientWidth / container.clientHeight,
+    params.palette,
+    params.bare,
+  );
 
   let currentShot = params.shot && world.applyShot(params.shot) ? params.shot : "vista";
   world.applyShot(currentShot);
@@ -73,7 +78,9 @@ async function main(): Promise<void> {
     hud.setInfo({ shot: "pose" });
   };
   hooks.birdPreset = (preset, phase): boolean => {
-    if (preset !== "idle" && preset !== "run" && preset !== "peck" && preset !== "alert") return false;
+    if (preset !== "idle" && preset !== "run" && preset !== "peck" && preset !== "alert" && preset !== "fan") {
+      return false;
+    }
     world.bird.applyPreset(preset, phase);
     return true;
   };

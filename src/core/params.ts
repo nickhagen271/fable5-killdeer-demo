@@ -10,6 +10,8 @@
  * `?post=0`    — bypass the painterly post stack entirely (debugging only:
  *                the raw stroke render, before the frame becomes paint).
  * `?palette=`  — starting color script: `sunset` (default) or `overcast`.
+ * `?bare=1`    — turnaround mode: the bird alone on a plain canvas ground
+ *                (the Phase 3 fidelity-check backdrop).
  */
 export interface BootParams {
   readonly seed: number;
@@ -19,6 +21,7 @@ export interface BootParams {
   readonly grade: boolean;
   readonly post: boolean;
   readonly palette: "sunset" | "overcast";
+  readonly bare: boolean;
 }
 
 export const DEFAULT_SEED = 1;
@@ -38,6 +41,7 @@ export function readParams(search: string): BootParams {
   const grade = q.get("grade") !== "0";
   const post = q.get("post") !== "0";
   const palette = q.get("palette") === "overcast" ? "overcast" : "sunset";
+  const bare = q.get("bare") === "1";
 
-  return { seed, shot: q.get("shot"), harness, hud, grade, post, palette };
+  return { seed, shot: q.get("shot"), harness, hud, grade, post, palette, bare };
 }
