@@ -406,24 +406,24 @@ export class FlowerField {
       const liftEdge = smoothstep(0.1, 0.45, u.add(0.5)).mul(0.12);
       Discard(radial.add(edgeNoise).sub(liftEdge).greaterThan(1.0));
 
-      const bristle = mx_noise_float(vec3(u.mul(7.0), v.mul(3.0), rand.mul(139.7))).mul(0.5).add(0.5);
+      // Knife-drag streaks along the dab: banded, not smooth — the touch is
+      // ONE plane of pigment with drag marks, never a shaded ball.
+      const bristle = mx_noise_float(vec3(u.mul(2.2), v.mul(9.0), rand.mul(139.7))).mul(0.5).add(0.5);
+      const bands = bristle.mul(3.0).floor().div(3.0).sub(0.33); // 3 hard streak planes
 
-      // Dabs are pure color and the thickest paint in the field: high value,
-      // one plane per touch, knife-drag streaks inside.
       const dither = hash(positionWorld.x.mul(59.3).add(positionWorld.z.mul(83.1))).sub(0.5).mul(0.04);
       const touchJitter = hash(rand.mul(391.3)).sub(0.5).mul(0.14);
-      const value = clamp(lit.mul(0.28).add(0.64).add(touchJitter).add(dither), 0.3, 0.98);
+      const value = clamp(lit.mul(0.28).add(0.64).add(touchJitter).add(bands.mul(0.14)).add(dither), 0.3, 0.98);
       const rowV = cIdx.add(0.5).div(lut.rows);
       const paint = texture(lut.texture, vec2(value, rowV)).rgb;
 
-      // Heavy impasto: relief across the dab, glints near the camera.
-      const n = normalize(vec3(u.mul(1.5), 1.0, v.mul(1.5)).add(vec3(bristle.sub(0.5).mul(0.7), 0.0, 0.0)));
-      const relief = clamp(n.dot(SUN), 0.0, 1.0).sub(0.5).mul(0.65).add(1.0);
-      const viewDir = normalize(cameraPosition.sub(positionWorld));
-      const graze = pow(clamp(float(1.0).sub(n.dot(viewDir)), 0.0, 1.0), 1.4);
-      const sheenAmp = graze.mul(smoothstep(30.0, 8.0, d)).mul(bristle).mul(0.5);
+      // A whisper of ridge light on the streak boundaries only — impasto as
+      // broken glints, not a form gradient.
+      const ridge = smoothstep(0.32, 0.48, bristle.mul(3.0).fract().sub(0.5).abs());
+      const sunUp = clamp(SUN.y, 0.0, 1.0).mul(0.5).add(0.5);
+      const glint = ridge.mul(sunUp).mul(smoothstep(25.0, 6.0, d)).mul(0.22);
 
-      return vec4(paint.mul(relief).add(vec3(1.0, 0.96, 0.88).mul(sheenAmp)), 1.0);
+      return vec4(paint.add(vec3(1.0, 0.96, 0.88).mul(glint)), 1.0);
     })();
 
     this.mesh = new InstancedMesh(new PlaneGeometry(1, 1, 2, 2), material, slots);
