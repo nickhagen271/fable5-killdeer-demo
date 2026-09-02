@@ -110,6 +110,54 @@ pool at the sun azimuth; overcast holds the gray-blue sky, massed clouds,
 cool greens and red poppy specks. The painty test passes on sky, ground,
 and dab patches in both.
 
+---
+
+## Phase 2 — endless streamed meadow
+
+Judged: `shots/phase-2/trek-0000m.png … trek-2000m.png` — a scripted 2 km
+straight run (bird driven east by `tools/trek.ts`, camera posed low
+behind it every 200 m) against the ref_c/ref_d ground behavior (rolling
+swells, stacked planes, regional variation) and the spec's Pillar C
+(no repeats, no edge, no stall over 8 ms unlogged).
+
+What the run shows: rolling 2–6 m swells at every checkpoint; flower
+drifts that change species and density (sparse yellows → an orange
+drift → poppy scatter); groves and lone trees that drift into the
+mid-distance and pass; hedgerow lines wandering through; a worn bare-soil
+field crossed around 1.9 km; hill band and treeline present in every
+frame; no visible edge, wrap, or clone pairs across the eleven frames.
+
+Streaming stalls: **one** logged frame (181 ms) across the whole run —
+the boot/teleport warm-up, when a 200 m camera jump forces every system
+to re-place its full grid in one frame while SwiftShader compiles the
+compute pipelines. Continuous play crosses one tile boundary of one
+system at a time (the six systems use six different tile sizes, so
+crossings interleave); the stall counter and worst-update-ms stay live on
+the debug HUD and console for real-GPU verification.
+
+Ten deltas, ranked (from the first trek pass):
+
+1. **Broad tree crowns were hollow shells of oversized right-angle
+   daubs** — blocky arches from the side. Fixed: daubs fill the canopy
+   volume, run 3.4–5.8 m with varied azimuth/pitch.
+2. **All-tree spacing looked metronomic** (one 48 m tile each). Fixed:
+   grove-field clustering — treeless regions, grove-y regions, loners.
+3. **Trees spawned too close and too contrasty.** Fixed: mid-distance
+   erosion starts at 48–90 m; crown values calmed.
+4. Soil patches merged into 60 m fields. Fixed: threshold tightened.
+5. Trees read totem-like at first — poplar rate cut to 20%.
+6. Ground strokes bridge sharp swell crests slightly (drape samples per
+   vertex, 5 segments) — invisible in practice; left.
+7. Mid grass blades still spike in the raw render (post melts them at
+   distance; near tufts read). Carried to the Phase 4 polish pass.
+8. The dab hover reads slightly floaty on steep slopes. Carried.
+9. Skirt daubs under sparse poplars occasionally read as separate dark
+   lumps. Carried (minor, mid-distance only).
+10. The soil field at 1.9 km could carry a few soil-toned dry strokes of
+    its own rather than only repainted grass strokes. Carried.
+
+Top three fixed and re-shot; the committed trek strip is the re-run.
+
 **Painty test after fixes:** sky patch (zenith), sky patch (near horizon),
 foreground grass patch, mid-distance patch — all carry stroke texture,
 weave, or both; none could be mistaken for a smooth 3D render. The bird
