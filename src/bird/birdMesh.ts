@@ -78,8 +78,13 @@ function headMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
   row = select(ny.greaterThan(0.2).and(ny.lessThan(0.46)).and(nz.lessThan(0.65)), float(ROW.birdCream), row);
   // White forehead patch above the bill.
   row = select(nz.greaterThan(0.6).and(ny.greaterThan(-0.02)).and(ny.lessThan(0.44)), float(ROW.birdCream), row);
-  // Black frontal bar separating forehead from crown, between the eyes.
-  row = select(ny.greaterThan(0.44).and(ny.lessThan(0.62)).and(nz.greaterThan(0.4)), float(ROW.birdBlack), row);
+  // Black frontal bar separating forehead from crown — a thin bar between
+  // the eyes only, never a cap over the crown.
+  row = select(
+    ny.greaterThan(0.44).and(ny.lessThan(0.6)).and(nz.greaterThan(0.48)).and(nz.lessThan(0.8)),
+    float(ROW.birdBlack),
+    row,
+  );
   // BLACK face band below the eye, bill to cheek, wrapping under the chin
   // (the identifying face pattern — a bold single stroke, not a smudge).
   const sideBand = ny.greaterThan(-0.1).and(ny.lessThan(0.16)).and(n.x.abs().greaterThan(0.34)).and(nz.lessThan(0.75));
@@ -91,13 +96,13 @@ function headMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
 function wingMarking(local: ReturnType<typeof positionLocal.toVar>): FloatExpr {
   const wob = mx_noise_float(local.mul(120.0)).mul(0.006);
   let row: FloatExpr = float(ROW.birdTaupe);
-  // Scalloped feather rows: thin pale fringes arcing across the folded wing
-  // (the knife-edge highlights of the reference paintings).
-  const rowsAlong = local.z.mul(160.0).add(local.y.mul(60.0)).add(mx_noise_float(local.mul(300.0)).mul(1.6));
-  const fringe = rowsAlong.fract().lessThan(0.16);
-  row = select(fringe.and(local.z.greaterThan(-0.03)), float(ROW.birdCream), row);
+  // Scalloped feather rows: thin pale fringes in even ranks across the
+  // folded wing (the knife-edge highlights of the reference paintings).
+  const rowsAlong = local.z.mul(115.0).add(local.y.mul(28.0)).add(mx_noise_float(local.mul(220.0)).mul(0.45));
+  const fringe = rowsAlong.fract().lessThan(0.14);
+  row = select(fringe.and(local.z.greaterThan(-0.036)), float(ROW.birdCream), row);
   // Dark folded primaries toward the tip; a cream edge along the low border.
-  row = select(local.z.add(wob).lessThan(-0.034), float(ROW.birdUmber), row);
+  row = select(local.z.add(wob).lessThan(-0.044), float(ROW.birdUmber), row);
   row = select(local.y.add(wob).lessThan(-0.015), float(ROW.birdCream), row);
   return row;
 }
@@ -148,7 +153,10 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
   const root = new Group();
 
   // --- body ---------------------------------------------------------------
+  // End radii pinch to ~zero: the lathe is CLOSED, so no view angle peers
+  // through the body at the tail's interior.
   const profile = [
+    new Vector2(0.0015, -0.071),
     new Vector2(0.008, -0.07),
     new Vector2(0.025, -0.048),
     new Vector2(0.036, -0.02),
@@ -156,13 +164,14 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
     new Vector2(0.038, 0.034),
     new Vector2(0.028, 0.056),
     new Vector2(0.015, 0.07),
+    new Vector2(0.002, 0.0712),
   ];
   const bodyGeo = new LatheGeometry(profile, 26);
   bodyGeo.rotateX(Math.PI / 2); // axis → +Z
   const bodyG = new Group();
   bodyG.position.y = BODY_Y;
   const bodyMesh = new Mesh(bodyGeo, matBody);
-  bodyMesh.scale.set(0.86, 1, 1); // slightly narrow
+  bodyMesh.scale.set(0.86, 1, 1.07); // narrow, carried long
   bodyG.add(bodyMesh);
   root.add(bodyG);
 
@@ -204,7 +213,7 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
   neckG.add(neck);
 
   const headG = new Group();
-  headG.position.set(0, 0.02, 0.012);
+  headG.position.set(0, 0.028, 0.012);
   neckG.add(headG);
 
   // Rounded plover head — large for the body, almost no neck showing.
