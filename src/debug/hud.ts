@@ -17,6 +17,7 @@ export interface HudInfo {
   readonly computeTest: ComputeTestState;
   readonly shot: string;
   readonly bird?: string;
+  readonly palette?: string;
 }
 
 /**
@@ -78,8 +79,9 @@ export class Hud {
       `seed     ${this.info.seed}`,
       `shot     ${this.info.shot}`,
       `bird     ${this.info.bird ?? "-"}`,
+      `palette  ${this.info.palette ?? "-"}`,
       `compute  ${this.info.computeTest}`,
-      `keys     h hud · wasd run · space peck · f alert · c freecam`,
+      `keys     h hud · wasd run · space peck · p palette · f alert · c freecam`,
     ].join("\n");
   }
 }

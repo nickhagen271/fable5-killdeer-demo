@@ -16,6 +16,7 @@ interface Args {
   readonly width: number;
   readonly height: number;
   readonly only: string | null;
+  readonly palette: string;
 }
 
 function parseArgs(argv: readonly string[]): Args {
@@ -29,6 +30,7 @@ function parseArgs(argv: readonly string[]): Args {
     width: Number(get("--width") ?? 1280),
     height: Number(get("--height") ?? 720),
     only: get("--only"),
+    palette: get("--palette") ?? "sunset",
   };
 }
 
@@ -51,7 +53,7 @@ async function main(): Promise<void> {
     });
     page.on("pageerror", (err) => console.error(`[page] ${err.message}`));
 
-    await page.goto(`${baseUrl}/?seed=${args.seed}&harness=1`);
+    await page.goto(`${baseUrl}/?seed=${args.seed}&harness=1&palette=${args.palette}`);
     const state = await waitForApp(page);
 
     const a = state.adapter;
@@ -64,11 +66,12 @@ async function main(): Promise<void> {
       throw new Error(`no shots matched (available: ${state.shots.join(", ")})`);
     }
 
+    const suffix = args.palette === "sunset" ? "" : `_${args.palette}`;
     for (const name of shotNames) {
       const ok = await page.evaluate((n) => window.__PKD?.setShot(n) ?? false, name);
       if (!ok) throw new Error(`setShot(${name}) failed`);
       await settleFrames(page, 8);
-      const file = join(outDir, `${name}.png`);
+      const file = join(outDir, `${name}${suffix}.png`);
       // Viewport clip, not element screenshot: the element path waits on rAF
       // stability, which times out when SwiftShader frames are slow.
       await page.screenshot({ path: file, clip: { x: 0, y: 0, width: args.width, height: args.height }, timeout: 120_000 });

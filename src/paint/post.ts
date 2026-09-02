@@ -36,6 +36,7 @@ import {
 import type Node from "three/src/nodes/core/Node.js";
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
 import { SUN_DIR } from "./fields";
+import type { AtmosphereUniforms } from "./palette";
 
 /**
  * The screen-space painterly post stack (Pillar A2). The scene — already
@@ -95,6 +96,8 @@ function buildTaps(): readonly KuwaharaTap[] {
 export interface PaintPostOptions {
   /** Apply the final color-script grade (the `?grade` param). */
   readonly grade: boolean;
+  /** Palette atmosphere uniforms — the grade follows the color script. */
+  readonly atm: AtmosphereUniforms;
 }
 
 export class PaintPost {
@@ -135,7 +138,7 @@ export class PaintPost {
     this.flowQuad = new QuadMesh(this.buildFlowMaterial());
     this.kuwQuad = new QuadMesh(this.buildKuwaharaMaterial());
     this.streakQuad = new QuadMesh(this.buildStreakMaterial());
-    this.surfaceQuad = new QuadMesh(this.buildSurfaceMaterial(options.grade));
+    this.surfaceQuad = new QuadMesh(this.buildSurfaceMaterial(options.grade, options.atm));
   }
 
   // -------------------------------------------------------------------------
@@ -342,7 +345,7 @@ export class PaintPost {
    * Stage 4 — the picture surface: stroke grain, canvas weave, impasto
    * relief, final grade.
    */
-  private buildSurfaceMaterial(grade: boolean): NodeMaterial {
+  private buildSurfaceMaterial(grade: boolean, atm: AtmosphereUniforms): NodeMaterial {
     const streakTex = this.streakRT.texture;
     const flowTex = this.flowRT.texture;
     const invSize = this.invSize;
@@ -394,8 +397,9 @@ export class PaintPost {
       c.assign(c.mul(warp.mul(threadNoise).mul(weaveAmp).add(1.0)));
 
       // --- the color-script grade (the last glaze; `?grade=0` skips it).
+      // The glaze tint is a palette uniform, so `P` re-grades the frame too.
       if (grade) {
-        c.assign(c.mul(vec3(1.045, 1.006, 0.952)).add(vec3(0.012, 0.008, 0.0)));
+        c.assign(c.mul(atm.gradeMul).add(atm.gradeAdd));
         const curved = c.mul(c).mul(vec3(3.0).sub(c.mul(2.0)));
         c.assign(mix(c, curved, 0.22));
         const gl = c.dot(LUM);

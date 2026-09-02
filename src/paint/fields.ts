@@ -13,8 +13,13 @@ import type UniformNode from "three/src/nodes/core/UniformNode.js";
 export type Vec2Expr = Node<"vec2">;
 export type FloatExpr = Node<"float">;
 
-/** Late-morning sun, warm and high. Shared by all shading. */
-export const SUN_DIR = new Vector3(-0.4, 0.55, -0.35).normalize();
+/**
+ * The sun. LOW and warm in the sunset script, higher and diffuse in
+ * overcast. The Vector3 is mutated in place by PaletteState.apply; the SUN
+ * uniform wraps the same instance, so every shader tracks the palette.
+ */
+export const SUN_DIR = new Vector3(-0.55, 0.3, -0.42).normalize();
+export const SUN = uniform(SUN_DIR);
 
 export class PaintFields {
   readonly seedU: UniformNode<"float", number>;
@@ -64,12 +69,14 @@ export class PaintFields {
   }
 
   /**
-   * Palette row for a point, given a per-sample random r in [0,1).
-   * Encodes the field's color script: green/ochre drifts, cool shadow
-   * masses, sparse poppy and rose notes, occasional broken-color swaps.
+   * Palette row for a ground stroke, given a per-sample random r in [0,1).
+   * v2 semantic rows: grass(0) / grassWarm(1) / grassCool(2) dominate,
+   * soil(3) in the warm drifts, and sparse flowerA/E flecks of broken color
+   * in the open. Actual flower DABS are their own system; these are just the
+   * flecks a loaded brush drops between them.
    */
   colorIndex(p: Vec2Expr, r: FloatExpr): FloatExpr {
-    const drift = this.n01(p, 0.045, 0.0); // green ↔ ochre macro drift
+    const drift = this.n01(p, 0.045, 0.0); // green ↔ warm macro drift
     const flower = this.n01(p, 3.9, 53.1);
     const flowerDrift = this.n01(p, 0.09, 71.9);
     const shadow = this.shadowMask(p);
@@ -80,23 +87,20 @@ export class PaintFields {
     const rShadow = hash(r.mul(541.9).add(29.5));
     const rFlower = hash(r.mul(197.3).add(8.9));
 
-    // Greens dominate the field; ochre/cream only in the warm drifts.
-    const greens = select(rPick.lessThan(0.55), float(0.0), select(rPick.lessThan(0.85), float(1.0), float(3.0)));
-    const warms = select(rPick.lessThan(0.6), float(2.0), select(rPick.lessThan(0.85), float(8.0), float(9.0)));
+    // Greens dominate; warm-lit blades and soil notes in the warm drifts.
+    const greens = select(rPick.lessThan(0.6), float(0.0), select(rPick.lessThan(0.86), float(1.0), float(2.0)));
+    const warms = select(rPick.lessThan(0.7), float(1.0), float(3.0));
     const warmProb = smoothstep(0.55, 0.88, drift).mul(0.55);
     let idx = select(rFamily.lessThan(warmProb), warms, greens);
 
-    // Cool shadow masses swap to blue-green / cool green / violet-grey.
-    const cools = select(rPick.lessThan(0.5), float(4.0), select(rPick.lessThan(0.85), float(3.0), float(5.0)));
-    idx = select(shadow.mul(0.85).greaterThan(rShadow), cools, idx);
+    // Cool shadow masses swap to the blue-green note.
+    idx = select(shadow.mul(0.85).greaterThan(rShadow), float(2.0), idx);
 
-    // Sparse flower notes in drifts (never inside shadow masses): dusty rose,
-    // and the rarer saturated poppy that carries the signature red accent.
+    // Sparse broken-color flecks in the open (never inside shadow masses).
     const open = float(1.0).sub(shadow);
-    const rose = smoothstep(0.62, 0.8, flower).mul(flowerDrift).mul(open);
-    const fleckGate = smoothstep(0.8, 0.88, flower.mul(flowerDrift.mul(0.5).add(0.6))).mul(open);
-    idx = select(rose.mul(0.22).greaterThan(rFlower), float(6.0), idx);
-    idx = select(fleckGate.mul(0.75).greaterThan(rFlower), float(7.0), idx);
+    const fleck = smoothstep(0.62, 0.8, flower).mul(flowerDrift).mul(open);
+    idx = select(fleck.mul(0.2).greaterThan(rFlower), float(7.0), idx);
+    idx = select(fleck.mul(0.12).greaterThan(hash(rFlower.mul(733.1))), float(11.0), idx);
 
     return idx;
   }

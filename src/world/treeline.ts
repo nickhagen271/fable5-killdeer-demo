@@ -4,7 +4,6 @@ import {
   Fn,
   abs,
   clamp,
-  color,
   cos,
   hash,
   mix,
@@ -23,8 +22,7 @@ import {
 } from "three/tsl";
 import { Rng } from "../core/rng";
 import { SUN_DIR } from "../paint/fields";
-import type { PaletteLUT } from "../paint/palette";
-import { FAR_FIELD, HAZE } from "../paint/underpaint";
+import type { AtmosphereUniforms, PaletteLUT } from "../paint/palette";
 
 /**
  * The treeline — distant tree masses in the Monet manner: stacked foliage
@@ -94,10 +92,10 @@ function planTrees(seed: number): TreeStroke[] {
       // Foliage daubs arc with the canopy: mostly horizontal, drooping tips.
       const dir = new Vector3(Math.cos(theta + Math.PI / 2), rng.range(-0.15, 0.2), Math.sin(theta + Math.PI / 2)).normalize();
 
-      // Lit crown on the sun side and top; cool violet shadow beneath.
+      // Lit crown on the sun side and top; the body is the hedgerow dark.
       const litSide = (Math.cos(theta) * sunSide + 1) / 2;
       const litAmt = Math.min(1, t * 0.75 + litSide * 0.45);
-      const row = litAmt > 0.72 ? 1 : litAmt > 0.4 ? 3 : rng.next() < 0.3 ? 5 : 4;
+      const row = litAmt > 0.72 ? 1 : litAmt > 0.4 ? 2 : 4;
       const value = 0.1 + litAmt * 0.42 + rng.range(-0.05, 0.05);
 
       strokes.push({
@@ -130,7 +128,7 @@ function planTrees(seed: number): TreeStroke[] {
         dirY: rng.range(-0.04, 0.08),
         dirZ: Math.sin(theta + Math.PI / 2),
         wid: rng.range(1.8, 3.2),
-        row: rng.next() < 0.35 ? 5 : 4,
+        row: 4,
         value: 0.08 + rng.range(0, 0.1),
         rand: rng.next(),
       });
@@ -148,7 +146,7 @@ function planTrees(seed: number): TreeStroke[] {
         dirY: 1,
         dirZ: 0,
         wid: rng.range(0.35, 0.6),
-        row: 4,
+        row: 14,
         value: 0.1 + rng.range(0, 0.06),
         rand: rng.next(),
       });
@@ -157,7 +155,7 @@ function planTrees(seed: number): TreeStroke[] {
   return strokes;
 }
 
-export function buildTreeline(seed: number, lut: PaletteLUT): InstancedMesh {
+export function buildTreeline(seed: number, lut: PaletteLUT, atm: AtmosphereUniforms): InstancedMesh {
   const strokes = planTrees(seed);
   const count = strokes.length;
 
@@ -227,9 +225,9 @@ export function buildTreeline(seed: number, lut: PaletteLUT): InstancedMesh {
     // same warm haze the ground dissolves into. Lost edges by construction.
     const d = positionWorld.xz.sub(cameraPosition.xz).length();
     const farBand = smoothstep(120.0, 320.0, d);
-    const cooled = mix(paint, color(FAR_FIELD), farBand.mul(0.42));
+    const cooled = mix(paint, atm.farField, farBand.mul(0.42));
     const hazeAmt = smoothstep(220.0, 460.0, d).mul(0.75);
-    const finalColor = mix(cooled, color(HAZE), hazeAmt);
+    const finalColor = mix(cooled, atm.haze, hazeAmt);
 
     return vec4(finalColor, 1.0);
   })();

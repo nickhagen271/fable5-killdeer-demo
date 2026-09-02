@@ -29,7 +29,7 @@ import {
   positionWorld,
 } from "three/tsl";
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
-import { PaintFields, SUN_DIR } from "./fields";
+import { PaintFields, SUN } from "./fields";
 import type { PaletteLUT } from "./palette";
 
 /**
@@ -67,8 +67,6 @@ export const STROKE_LODS: readonly StrokeLODConfig[] = [
   { name: "mid", tileSize: 16, grid: 7, strokesPerTile: 500, length: 1.15, width: 0.3, rIn: 10, rOut: 48, yBase: 0.018 },
   { name: "near", tileSize: 4, grid: 9, strokesPerTile: 340, length: 0.5, width: 0.075, rIn: 0, rOut: 13, yBase: 0.032 },
 ];
-
-const SUN = vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z);
 
 type ComputeNode = Parameters<WebGPURenderer["computeAsync"]>[0];
 

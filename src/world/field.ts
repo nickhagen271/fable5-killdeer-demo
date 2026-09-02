@@ -3,12 +3,13 @@ import { Bird } from "../bird/bird";
 import type { BirdPreset } from "../bird/birdAnim";
 import { AccentStrokes } from "../paint/accents";
 import { PaintFields } from "../paint/fields";
-import { buildGroundLUT } from "../paint/palette";
+import { PaletteState, type PaletteName } from "../paint/palette";
 import { STROKE_LODS, StrokeLOD } from "../paint/strokes";
 import { buildUnderpaint } from "../paint/underpaint";
 import { FlowerField, GRASS_LODS, GrassLOD } from "../paint/vegetation";
 import { WindField } from "../paint/wind";
 import { FoodSystem } from "./food";
+import { HorizonBand } from "./horizon";
 import { buildSkyDome } from "./sky";
 import { buildTreeline } from "./treeline";
 
@@ -88,24 +89,28 @@ export interface PaintWorld {
   readonly bird: Bird;
   readonly food: FoodSystem;
   readonly wind: WindField;
+  readonly palette: PaletteState;
   applyShot(name: string): boolean;
   /** Per-frame: stream stroke tiles around the camera. */
   update(renderer: WebGPURenderer): void;
 }
 
-export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
+export function buildPaintWorld(seed: number, aspect: number, paletteName: PaletteName): PaintWorld {
   const fields = new PaintFields(seed);
-  const lut = buildGroundLUT();
+  const palette = new PaletteState(paletteName);
+  const lut = palette;
   const wind = new WindField(seed, fields);
   const scene = new Scene();
 
   // Subdivided so the underpaint's field noise can run at vertex rate.
-  const ground = new Mesh(new PlaneGeometry(900, 900, 300, 300), buildUnderpaint(fields, lut));
+  const ground = new Mesh(new PlaneGeometry(900, 900, 300, 300), buildUnderpaint(fields, lut, palette.atm));
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
-  scene.add(buildSkyDome(fields, wind));
-  scene.add(buildTreeline(seed, lut));
+  scene.add(buildSkyDome(fields, wind, palette.atm));
+  scene.add(buildTreeline(seed, lut, palette.atm));
+  const horizon = new HorizonBand(fields, lut, palette.atm);
+  scene.add(horizon.group);
 
   const lods = STROKE_LODS.map((cfg) => new StrokeLOD(cfg, fields, lut));
   let strokeCount = 0;
@@ -120,9 +125,8 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     strokeCount += g.mesh.count;
   }
   const flowers = new FlowerField(fields, lut, wind);
-  scene.add(flowers.stems);
-  scene.add(flowers.heads);
-  strokeCount += flowers.stems.count * 2;
+  scene.add(flowers.mesh);
+  strokeCount += flowers.mesh.count;
 
   const accents = new AccentStrokes(fields, lut);
   scene.add(accents.mesh);
@@ -159,7 +163,8 @@ export function buildPaintWorld(seed: number, aspect: number): PaintWorld {
     for (const g of grass) g.update(renderer, camera.position.x, camera.position.z);
     flowers.update(renderer, camera.position.x, camera.position.z);
     accents.update(renderer, camera.position.x, camera.position.z);
+    horizon.update(camera.position.x, camera.position.z);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, palette, applyShot, update };
 }

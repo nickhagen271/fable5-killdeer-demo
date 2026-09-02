@@ -9,6 +9,7 @@
  * `?grade=0`   — disable the final color-script grade (the filter test).
  * `?post=0`    — bypass the painterly post stack entirely (debugging only:
  *                the raw stroke render, before the frame becomes paint).
+ * `?palette=`  — starting color script: `sunset` (default) or `overcast`.
  */
 export interface BootParams {
   readonly seed: number;
@@ -17,6 +18,7 @@ export interface BootParams {
   readonly hud: boolean;
   readonly grade: boolean;
   readonly post: boolean;
+  readonly palette: "sunset" | "overcast";
 }
 
 export const DEFAULT_SEED = 1;
@@ -35,6 +37,7 @@ export function readParams(search: string): BootParams {
 
   const grade = q.get("grade") !== "0";
   const post = q.get("post") !== "0";
+  const palette = q.get("palette") === "overcast" ? "overcast" : "sunset";
 
-  return { seed, shot: q.get("shot"), harness, hud, grade, post };
+  return { seed, shot: q.get("shot"), harness, hud, grade, post, palette };
 }

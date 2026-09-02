@@ -29,7 +29,7 @@ import {
   positionWorld,
 } from "three/tsl";
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
-import { PaintFields, SUN_DIR, type FloatExpr } from "./fields";
+import { PaintFields, SUN } from "./fields";
 import type { PaletteLUT } from "./palette";
 import type { WindField } from "./wind";
 
@@ -41,8 +41,6 @@ import type { WindField } from "./wind";
  * (reference note: "grass strokes rise"), tips catch the light and carry the
  * impasto; flower heads are the thickest paint in the field.
  */
-
-const SUN = vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z);
 
 type ComputeNode = Parameters<WebGPURenderer["computeAsync"]>[0];
 
@@ -268,18 +266,25 @@ export class GrassLOD {
 }
 
 // ---------------------------------------------------------------------------
-// Flowers: stems + impasto heads from one placement
+// Flowers: camera-facing palette-knife dabs (Pillar A1)
 // ---------------------------------------------------------------------------
 
 export interface FlowerConfig extends TileStream {
   readonly rOut: number;
 }
 
-export const FLOWER_CFG: FlowerConfig = { tileSize: 8, grid: 9, perTile: 120, rOut: 30 };
+/**
+ * A flower is one to three overlapping DABS of pure palette color — not a
+ * mesh with petals. Slots come in threes sharing one base position: dab 0
+ * always lives, dabs 1–2 roll for existence, each offset a little and
+ * rotated, so blooms read as loaded double-touches of the knife. Big dabs at
+ * the feet (a rare XL class carries the ref_d foreground), specks by 30 m,
+ * eroded away entirely by 80 m.
+ */
+export const FLOWER_CFG: FlowerConfig = { tileSize: 8, grid: 21, perTile: 36, rOut: 80 };
 
 export class FlowerField {
-  readonly stems: InstancedMesh;
-  readonly heads: InstancedMesh;
+  readonly mesh: InstancedMesh;
   private readonly streamer: Streamer;
 
   constructor(fields: PaintFields, lut: PaletteLUT, wind: WindField) {
@@ -287,7 +292,7 @@ export class FlowerField {
     const slots = cfg.grid * cfg.grid * cfg.perTile;
     const half = (cfg.grid - 1) / 2;
 
-    // A: x, z, stem height, head azimuth   B: head size, tilt, palette row, rand
+    // A: x, z, hover height, dab size   B: in-plane angle, aspect, row+lit, rand
     const bufA = instancedArray(slots, "vec4");
     const bufB = instancedArray(slots, "vec4");
     const snapU = uniform(new Vector2(0, 0));
@@ -296,165 +301,134 @@ export class FlowerField {
       const i = instanceIndex;
       const tileIdx = i.div(cfg.perTile);
       const slot = i.mod(cfg.perTile).toFloat();
+      const group = slot.div(3.0).floor(); // three dab slots per bloom
+      const sub = slot.mod(3.0);
       const gx = tileIdx.mod(cfg.grid).toFloat().sub(half);
       const gz = tileIdx.div(cfg.grid).toFloat().sub(half);
       const tile = vec2(snapU.x.add(gx), snapU.y.add(gz)).toVar();
 
       const tileHash = hash(tile.x.mul(151.3).add(tile.y.mul(337.1)).add(fields.seedU));
-      const r1 = hash(slot.mul(11.31).add(tileHash.mul(1024.0)));
-      const r2 = hash(slot.mul(19.73).add(tileHash.mul(2048.0)).add(0.71));
+      const r1 = hash(group.mul(11.31).add(tileHash.mul(1024.0)));
+      const r2 = hash(group.mul(19.73).add(tileHash.mul(2048.0)).add(0.71));
       const r3 = hash(r1.mul(797.3).add(r2.mul(233.9)));
-      const r4 = hash(r3.mul(613.1).add(slot));
+      const r4 = hash(r3.mul(613.1).add(group));
       const r5 = hash(r4.mul(357.7).add(tileHash));
+      const rSub = hash(r5.mul(147.9).add(sub.mul(53.7)));
 
-      const px = tile.x.add(r1).mul(cfg.tileSize);
-      const pz = tile.y.add(r2).mul(cfg.tileSize);
-      const p = vec2(px, pz).toVar();
+      const bx = tile.x.add(r1).mul(cfg.tileSize);
+      const bz = tile.y.add(r2).mul(cfg.tileSize);
+      const p = vec2(bx, bz).toVar();
 
-      // Flowers live in drifts (the poppy-patch fields), never in shadow,
-      // with a light scatter of loners so no view is flowerless.
+      // Blooms live in drifts, never in shadow masses, with a light scatter
+      // of loners so no view is flowerless.
       const drift = fields.n01(p, 0.09, 71.9);
-      const patch = smoothstep(0.42, 0.7, drift);
+      const patch = smoothstep(0.42, 0.72, drift);
       const open = float(1.0).sub(fields.shadowMask(p));
-      const keep = patch.mul(0.9).max(0.07).mul(open);
-      const alive = select(keep.greaterThan(hash(slot.mul(5.87).add(tileHash.mul(3.0)))), float(1.0), float(0.0));
+      const keep = patch.mul(0.85).max(0.06).mul(open);
+      const bloomAlive = select(keep.greaterThan(hash(group.mul(5.87).add(tileHash.mul(3.0)))), float(1.0), float(0.0));
+      // Dab 0 always; dabs 1–2 are the overlapping second and third touches.
+      const dabAlive = select(sub.lessThan(0.5), float(1.0), select(rSub.lessThan(0.72), float(1.0), float(0.0)));
+      const alive = bloomAlive.mul(dabAlive);
 
-      const stemH = mix(float(0.12), float(0.26), pow(r3, 1.3)).mul(alive);
-      const headSize = mix(float(0.04), float(0.075), r4);
-      const tilt = r5.mul(0.9).add(0.25); // rad from vertical, toward the sun-ish
-      const azimuth = r2.mul(PI.mul(2.0));
+      // Size: many small touches, a rare XL foreground dab; later touches of
+      // one bloom are a bit smaller than the first.
+      let size = mix(float(0.045), float(0.12), pow(r3, 1.7));
+      size = size.mul(select(hash(r3.mul(719.3)).greaterThan(0.94), float(1.8), float(1.0)));
+      size = size.mul(select(sub.lessThan(0.5), float(1.0), float(0.78))).mul(alive);
 
-      // Color script: poppy red dominates, dusty rose, cream, sun-yellow.
+      // Dab offset within the bloom and hover height ("stems" are unseen).
+      const offAng = rSub.mul(PI.mul(2.0));
+      const offR = select(sub.lessThan(0.5), float(0.0), size.mul(rSub.mul(0.5).add(0.35)));
+      const px = bx.add(cos(offAng).mul(offR));
+      const pz = bz.add(sin(offAng).mul(offR));
+      const hover = mix(float(0.09), float(0.34), pow(r4, 1.4)).add(rSub.mul(0.04));
+
+      // Species: a slow field picks the local dominant; most blooms follow
+      // it, the rest scatter across the palette's five dab rows.
+      const speciesField = fields.n01(p, 0.03, 203.9);
+      const dominant = clamp(speciesField.mul(5.0).floor(), 0.0, 4.0).add(7.0);
       const rC = hash(r5.mul(911.7).add(1.3));
-      let cIdx: FloatExpr = float(7.0);
-      cIdx = select(rC.greaterThan(0.62), float(6.0), cIdx);
-      cIdx = select(rC.greaterThan(0.82), float(8.0), cIdx);
-      cIdx = select(rC.greaterThan(0.93), float(1.0), cIdx);
+      const scatterPick = clamp(hash(rC.mul(577.1)).mul(5.0).floor(), 0.0, 4.0).add(7.0);
+      const cIdx = select(rC.lessThan(0.62), dominant, scatterPick);
 
       const lit = fields.litness(p);
       const rowPacked = cIdx.add(clamp(lit, 0.002, 0.998));
-      bufA.element(i).assign(vec4(px, pz, stemH, azimuth));
-      bufB.element(i).assign(vec4(headSize, tilt, rowPacked, r5));
+      const angle = r5.mul(PI.mul(2.0)).add(sub.mul(1.9));
+      const aspect = mix(float(1.25), float(1.9), r4);
+
+      bufA.element(i).assign(vec4(px, pz, hover, size));
+      bufB.element(i).assign(vec4(angle, aspect, rowPacked, rSub));
     })().compute(slots);
 
-    // ---- stems: thin dark-green rising strokes ----------------------------
-    const stemMat = new NodeMaterial();
-    const sA = bufA.element(instanceIndex);
-    const sB = bufB.element(instanceIndex);
-    const svA = varying(sA);
+    const material = new NodeMaterial();
+    const dA = bufA.element(instanceIndex);
+    const dB = bufB.element(instanceIndex);
+    const dvA = varying(dA);
+    const dvB = varying(dB);
 
-    stemMat.positionNode = Fn(() => {
-      const across = uv().x.sub(0.5);
-      const t = uv().y;
-      const stemH = sA.z;
-      const rand = sB.w;
-      const az = hash(rand.mul(631.7)).mul(PI.mul(2.0));
-      const side = vec3(cos(az), 0.0, sin(az));
-      const leanDir = vec3(cos(sA.w), 0.0, sin(sA.w));
-      const bend = t.mul(t).mul(0.18).mul(stemH);
-      const windDisp = wind
-        .displacement(vec2(sA.x, sA.y), rand, 0.2)
-        .mul(t.mul(t).mul(stemH.mul(4.0).min(1.0)));
-      return vec3(sA.x, 0.02, sA.y)
-        .add(side.mul(across.mul(0.011)))
-        .add(leanDir.mul(bend))
-        .add(vec3(0.0, t.mul(stemH), 0.0))
-        .add(windDisp);
-    })();
-
-    const svB = varying(sB);
-
-    stemMat.fragmentNode = Fn(() => {
-      const stemH = svA.z;
-      Discard(stemH.lessThan(0.01));
-      const d = positionWorld.xz.sub(cameraPosition.xz).length();
-      Discard(smoothstep(FLOWER_CFG.rOut, FLOWER_CFG.rOut * 0.8, d).lessThan(hash(svA.x.mul(77.7).add(svA.y))));
-      const lit = svB.z.fract();
-      const value = clamp(lit.mul(0.4).add(0.14), 0.02, 0.98);
-      const paint = texture(lut.texture, vec2(value, float(3.5).div(lut.rows))).rgb;
-      return vec4(paint, 1.0);
-    })();
-
-    // ---- heads: the thickest paint in the field ---------------------------
-    const headMat = new NodeMaterial();
-    const hA = bufA.element(instanceIndex);
-    const hB = bufB.element(instanceIndex);
-    const hvA = varying(hA);
-    const hvB = varying(hB);
-
-    headMat.positionNode = Fn(() => {
+    material.positionNode = Fn(() => {
       const u = uv().x.sub(0.5);
       const v = uv().y.sub(0.5);
-      const stemH = hA.z;
-      const az = hA.w;
-      const size = hB.x;
-      const tilt = hB.y;
+      const size = dA.w;
+      const angle = dB.x;
+      const aspect = dB.y;
+      const rand = dB.w;
 
-      // A daub plane tilted off vertical, facing sunward-ish; its center sits
-      // at the stem top and rides the stem's wind sway (with a touch of
-      // overshoot — the head is the pendulum's weight).
-      const facing = vec3(cos(az), 0.0, sin(az));
-      const side = vec3(sin(az), 0.0, cos(az).negate());
-      const upT = mix(vec3(0.0, 1.0, 0.0), facing, tilt.mul(0.55));
-      const windDisp = wind
-        .displacement(vec2(hA.x, hA.y), hB.w, 0.2)
-        .mul(stemH.mul(4.0).min(1.0))
-        .mul(1.12);
-      return vec3(hA.x, 0.015, hA.y)
-        .add(vec3(0.0, stemH, 0.0))
-        .add(side.mul(u.mul(size).mul(1.5)))
-        .add(normalize(upT).mul(v.mul(size)))
-        .add(windDisp);
+      const center = vec3(dA.x, dA.z, dA.y).toVar();
+      const windDisp = wind.displacement(vec2(dA.x, dA.y), rand, 0.2).mul(dA.z.mul(3.0).min(1.1));
+      center.addAssign(windDisp);
+
+      // Camera-facing frame (the dab is a touch of paint on the picture
+      // plane), rotated in-plane per dab.
+      const fwd = normalize(cameraPosition.sub(center));
+      const right = normalize(vec3(0.0, 1.0, 0.0).cross(fwd));
+      const upv = fwd.cross(right);
+      const ru = u.mul(cos(angle)).sub(v.mul(sin(angle)));
+      const rv = u.mul(sin(angle)).add(v.mul(cos(angle)));
+      return center.add(right.mul(ru.mul(size).mul(aspect))).add(upv.mul(rv.mul(size)));
     })();
 
-    headMat.fragmentNode = Fn(() => {
+    material.fragmentNode = Fn(() => {
       const u = uv().x.sub(0.5);
       const v = uv().y.sub(0.5);
-      const stemH = hvA.z;
-      const cIdx = hvB.z.floor();
-      const lit = hvB.z.fract();
-      const rand = hvB.w;
+      const size = dvA.w;
+      const cIdx = dvB.z.floor();
+      const lit = dvB.z.fract();
+      const rand = dvB.w;
 
-      Discard(stemH.lessThan(0.01));
+      Discard(size.lessThan(0.004));
       const d = positionWorld.xz.sub(cameraPosition.xz).length();
-      Discard(smoothstep(FLOWER_CFG.rOut, FLOWER_CFG.rOut * 0.8, d).lessThan(hash(rand.mul(1341.1))));
+      Discard(smoothstep(FLOWER_CFG.rOut, FLOWER_CFG.rOut * 0.6, d).lessThan(hash(rand.mul(1341.1))));
 
-      // Loose petal daub: radial mask broken by noise, a couple of lobes.
-      const ang = v.atan(u);
-      const lobes = sin(ang.mul(5.0).add(rand.mul(37.0))).mul(0.12);
-      const radial = u.mul(u).add(v.mul(v)).mul(4.0);
-      const edgeNoise = mx_noise_float(vec3(u.mul(6.0), v.mul(6.0), rand.mul(217.9))).mul(0.22);
-      Discard(radial.add(lobes).add(edgeNoise).greaterThan(1.0));
+      // The dab footprint: a fat rounded knife touch, edge broken by noise,
+      // one side slightly squared where the knife lifted.
+      const radial = u.mul(u).mul(4.0).add(v.mul(v).mul(4.0));
+      const edgeNoise = mx_noise_float(vec3(u.mul(5.0), v.mul(5.0), rand.mul(217.9))).mul(0.3);
+      const liftEdge = smoothstep(0.1, 0.45, u.add(0.5)).mul(0.12);
+      Discard(radial.add(edgeNoise).sub(liftEdge).greaterThan(1.0));
 
-      const bristle = mx_noise_float(vec3(u.mul(9.0), v.mul(9.0), rand.mul(139.7))).mul(0.5).add(0.5);
+      const bristle = mx_noise_float(vec3(u.mul(7.0), v.mul(3.0), rand.mul(139.7))).mul(0.5).add(0.5);
 
-      // Flower heads carry the highest value and the thickest paint.
-      const dither = hash(positionWorld.x.mul(59.3).add(positionWorld.z.mul(83.1))).sub(0.5).mul(0.05);
-      let value = clamp(lit.mul(0.42).add(0.52).add(dither), 0.02, 0.98);
-      // Poppy centers go dark — the near-black eye of the bloom.
-      const isPoppy = cIdx.sub(7.0).abs().lessThan(0.25);
-      const center = smoothstep(0.16, 0.06, radial);
-      value = select(isPoppy, mix(value, float(0.04), center), value);
-
+      // Dabs are pure color and the thickest paint in the field: high value,
+      // one plane per touch, knife-drag streaks inside.
+      const dither = hash(positionWorld.x.mul(59.3).add(positionWorld.z.mul(83.1))).sub(0.5).mul(0.04);
+      const touchJitter = hash(rand.mul(391.3)).sub(0.5).mul(0.18);
+      const value = clamp(lit.mul(0.38).add(0.56).add(touchJitter).add(dither), 0.05, 0.98);
       const rowV = cIdx.add(0.5).div(lut.rows);
       const paint = texture(lut.texture, vec2(value, rowV)).rgb;
 
-      // Heavy impasto: strong relief + sheen — light piles on the petals.
-      const hAmp = lit.mul(0.7).add(0.3);
-      const nTilt = vec3(u.mul(1.6), 1.0, v.mul(1.6));
-      const n = normalize(nTilt.add(vec3(bristle.sub(0.5).mul(0.6), 0.0, 0.0)));
-      const relief = clamp(n.dot(SUN), 0.0, 1.0).sub(0.5).mul(hAmp).mul(0.7).add(1.0);
+      // Heavy impasto: relief across the dab, glints near the camera.
+      const n = normalize(vec3(u.mul(1.5), 1.0, v.mul(1.5)).add(vec3(bristle.sub(0.5).mul(0.7), 0.0, 0.0)));
+      const relief = clamp(n.dot(SUN), 0.0, 1.0).sub(0.5).mul(0.65).add(1.0);
       const viewDir = normalize(cameraPosition.sub(positionWorld));
       const graze = pow(clamp(float(1.0).sub(n.dot(viewDir)), 0.0, 1.0), 1.4);
-      const sheenAmp = graze.mul(hAmp).mul(smoothstep(30.0, 8.0, d)).mul(bristle).mul(0.55);
+      const sheenAmp = graze.mul(smoothstep(30.0, 8.0, d)).mul(bristle).mul(0.5);
 
       return vec4(paint.mul(relief).add(vec3(1.0, 0.96, 0.88).mul(sheenAmp)), 1.0);
     })();
 
-    this.stems = new InstancedMesh(new PlaneGeometry(1, 1, 1, 2), stemMat, slots);
-    this.stems.frustumCulled = false;
-    this.heads = new InstancedMesh(new PlaneGeometry(1, 1, 2, 2), headMat, slots);
-    this.heads.frustumCulled = false;
+    this.mesh = new InstancedMesh(new PlaneGeometry(1, 1, 2, 2), material, slots);
+    this.mesh.frustumCulled = false;
     this.streamer = new Streamer(cfg.tileSize, snapU, computeNode);
   }
 

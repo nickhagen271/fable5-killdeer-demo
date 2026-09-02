@@ -94,8 +94,8 @@ export class AccentStrokes {
       const len = mix(float(0.16), float(0.42), r4).mul(alive);
       const wid = mix(float(0.035), float(0.06), r1);
 
-      // Deep cool rows only: blue-green or violet-grey.
-      const row = select(r2.lessThan(0.6), float(4.0), float(5.0));
+      // Deep cool rows only: the cool grass note or the hedgerow dark.
+      const row = select(r2.lessThan(0.6), float(2.0), float(4.0));
 
       bufA.element(i).assign(vec4(px, pz, angle, len));
       bufB.element(i).assign(vec4(wid, alive, row, r4));

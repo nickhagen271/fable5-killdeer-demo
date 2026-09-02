@@ -35,14 +35,21 @@ async function main(): Promise<void> {
   }
 
   bootMsg("placing strokes", 0.7);
-  const world = buildPaintWorld(params.seed, container.clientWidth / container.clientHeight);
+  const world = buildPaintWorld(params.seed, container.clientWidth / container.clientHeight, params.palette);
 
   let currentShot = params.shot && world.applyShot(params.shot) ? params.shot : "vista";
   world.applyShot(currentShot);
 
   const hud = new Hud(
     document.body,
-    { seed: params.seed, backend: "WebGPU", adapter, computeTest: hooks.computeTest, shot: currentShot },
+    {
+      seed: params.seed,
+      backend: "WebGPU",
+      adapter,
+      computeTest: hooks.computeTest,
+      shot: currentShot,
+      palette: params.palette,
+    },
     params.hud,
   );
 
@@ -95,6 +102,9 @@ async function main(): Promise<void> {
   window.addEventListener("keydown", (ev) => {
     if (!ev.repeat) pressed.add(ev.key.toLowerCase());
     held.add(ev.key.toLowerCase());
+    if (ev.key === "p" || ev.key === "P") {
+      hud.setInfo({ palette: world.palette.toggle() });
+    }
   });
   window.addEventListener("keyup", (ev) => held.delete(ev.key.toLowerCase()));
 
@@ -129,7 +139,9 @@ async function main(): Promise<void> {
 
   // The painterly post stack — the frame becomes paint here. `?post=0`
   // bypasses it (debug); `?grade=0` keeps the stack but skips the last glaze.
-  const post = params.post ? new PaintPost(renderer, world.scene, world.camera, { grade: params.grade }) : null;
+  const post = params.post
+    ? new PaintPost(renderer, world.scene, world.camera, { grade: params.grade, atm: world.palette.atm })
+    : null;
 
   const camFwd = new Vector3();
   const move = new Vector2();

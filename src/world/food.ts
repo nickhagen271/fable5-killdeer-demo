@@ -105,7 +105,7 @@ export class FoodSystem {
       const wormValue = seg.mul(0.12).add(0.2);
       const beetleValue = smoothstep(0.12, 0.0, abs(u.add(0.08)).add(abs(v))).mul(0.3).add(0.08);
       const value = select(isWorm, wormValue, beetleValue);
-      const row = select(isWorm, 14.5, 13.5); // rust / band-black rows
+      const row = select(isWorm, 19.5, 16.5); // worm / band-black rows
       const dith = hash(u.mul(913.7).add(rand)).sub(0.5).mul(0.04);
       const paint = texture(lut.texture, vec2(clamp(value.add(dith), 0.02, 0.98), row.div(lut.rows))).rgb;
       return vec4(paint, 1.0);

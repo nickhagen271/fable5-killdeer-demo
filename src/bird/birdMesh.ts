@@ -117,7 +117,7 @@ function contactShadow(lut: PaletteLUT): Mesh {
   material.fragmentNode = Fn(() => {
     const r = uv().sub(vec2(0.5, 0.5)).length().mul(2.0);
     const alpha = smoothstep(1.0, 0.25, r).mul(0.38);
-    const shade = texture(lut.texture, vec2(0.16, (ROW.coolGreen + 0.5) / lut.rows)).rgb;
+    const shade = texture(lut.texture, vec2(0.16, (ROW.grassCool + 0.5) / lut.rows)).rgb;
     return vec4(shade, alpha);
   })();
   const mesh = new Mesh(new CircleGeometry(0.15, 24), material);
@@ -135,7 +135,7 @@ export function buildBirdRig(lut: PaletteLUT): BirdRig {
   const matTail = buildBirdMaterial(lut, tailMarking, { flow: [0, 0, 1] });
   const matBill = buildBirdMaterial(lut, constantMarking(ROW.birdUmber), { flow: [0, 0, 1], valueShift: -0.18 });
   const matEye = buildBirdMaterial(lut, constantMarking(ROW.birdBlack), { valueShift: -0.2 });
-  const matRing = buildBirdMaterial(lut, constantMarking(ROW.poppy), { valueShift: 0.12 });
+  const matRing = buildBirdMaterial(lut, constantMarking(ROW.flowerC), { valueShift: 0.12 });
   const matLeg = buildBirdMaterial(lut, constantMarking(ROW.birdLeg), { flow: [0, 1, 0] });
 
   const root = new Group();

@@ -16,7 +16,7 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { SUN_DIR, type FloatExpr } from "../paint/fields";
+import { SUN, type FloatExpr } from "../paint/fields";
 import type { PaletteLUT } from "../paint/palette";
 
 /**
@@ -29,8 +29,6 @@ import type { PaletteLUT } from "../paint/palette";
  */
 
 export type MarkingFn = (local: ReturnType<typeof positionLocal.toVar>) => FloatExpr;
-
-const SUN = vec3(SUN_DIR.x, SUN_DIR.y, SUN_DIR.z);
 
 export interface BirdMaterialOptions {
   /** Feather flow: axis in part-local space the striations run along. */
