@@ -90,7 +90,7 @@ export function terrainHeightCPU(x: number, z: number, seed: number): number {
  */
 export function soilMaskCPU(x: number, z: number, seed: number): number {
   const n = valueNoiseCPU(x + 3117.3, z - 917.7, 34, seedSalt(seed, 0x2545f491));
-  const t = (n - 0.78) / 0.07;
+  const t = (n - 0.8) / 0.06;
   const c = Math.max(0, Math.min(1, t));
   return c * c * (3 - 2 * c);
 }
@@ -154,7 +154,7 @@ export class Terrain {
   /** Bare-soil patch mask in [0,1] (GPU). */
   soil(p: V2): F {
     const n = valueNoiseNode(vec2(p.x.add(3117.3), p.y.sub(917.7)), float(34), uint(this.soilSaltU));
-    return n.sub(0.78).div(0.07).clamp(0.0, 1.0).smoothstep(0.0, 1.0);
+    return n.sub(0.8).div(0.06).clamp(0.0, 1.0).smoothstep(0.0, 1.0);
   }
 
   soilCPU(x: number, z: number): number {

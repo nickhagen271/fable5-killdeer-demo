@@ -109,9 +109,11 @@ export class Groves {
       // Crown daubs: canopy shell, gently biased upward.
       const t = pow(r1, 0.85);
       const shellY = crownBase.add(t.mul(treeH.sub(crownBase)));
+      // Filled canopy (not a hollow shell): daubs all the way to the axis so
+      // the mass reads solid from any side.
       const shellR = crownR
         .mul(pow(float(1.0).sub(t.mul(t).mul(0.85)).max(0.15), 0.5))
-        .mul(mix(float(0.4), float(0.85), r2));
+        .mul(mix(float(0.12), float(0.9), pow(r2, 0.7)));
       const theta = r3.mul(PI.mul(2.0));
       const crownX = siteX.add(cos(theta).mul(shellR));
       const crownZ = siteZ.add(sin(theta).mul(shellR).mul(0.8));
@@ -121,10 +123,10 @@ export class Groves {
       const litAmt = t.mul(0.6).add(sunSide.mul(0.4)).min(1.0);
       const crownRow = select(litAmt.greaterThan(0.82), float(1.0), select(litAmt.greaterThan(0.45), float(2.0), float(4.0)));
       const crownValue = litAmt.mul(0.32).add(0.12).add(r4.sub(0.5).mul(0.1)).clamp(0.05, 0.8);
-      const crownLen = mix(mix(float(5.0), float(8.5), r4), mix(float(2.4), float(4.0), r4), poplar).mul(t.mul(0.3).add(0.75));
+      const crownLen = mix(mix(float(3.4), float(5.8), r4), mix(float(2.2), float(3.6), r4), poplar).mul(t.mul(0.3).add(0.75));
       const crownWid = mix(float(1.6), float(2.9), r5);
-      const crownAz = theta.add(PI.mul(0.5));
-      const crownPitch = r4.sub(0.43).mul(0.35);
+      const crownAz = theta.add(PI.mul(0.5)).add(r5.sub(0.5).mul(0.9));
+      const crownPitch = r4.sub(0.43).mul(0.55);
 
       // Skirt daubs: broad dark understory seating the mass on the ground.
       const skTheta = r1.mul(PI.mul(2.0));
