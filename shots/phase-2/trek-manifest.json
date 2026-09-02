@@ -1,0 +1,22 @@
+{
+  "seed": 7,
+  "palette": "sunset",
+  "capturedAt": "2026-09-02T03:12:36.520Z",
+  "stalls": {
+    "stallCount": 1,
+    "worstUpdateMs": 141.60000000009313
+  },
+  "captures": [
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-0000m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-0200m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-0400m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-0600m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-0800m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-1000m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-1200m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-1400m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-1600m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-1800m.png",
+    "/home/user/fable5-killdeer-demo/shots/phase-2/trek-2000m.png"
+  ]
+}
