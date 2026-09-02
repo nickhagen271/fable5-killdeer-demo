@@ -135,16 +135,15 @@ export class GrassLOD {
       const width = float(cfg.width).mul(r5.mul(0.7).add(0.65));
       const lean = r6.mul(0.34).add(0.14);
 
-      // Color: greens; dry cream/ochre blades in the warm drifts, cool greens
-      // in shadow. Poppy rows never appear in grass.
+      // Color: greens; warm-lit blades in the warm drifts, cool greens in
+      // shadow. Flower and soil rows never appear in grass.
       const drift = fields.n01(p, 0.045, 0.0);
       const rPick = hash(r6.mul(517.7).add(9.1));
-      const greens = select(rPick.lessThan(0.55), float(0.0), select(rPick.lessThan(0.85), float(1.0), float(3.0)));
-      // Dry blades are ochre only — cream wires read as scratches, not grass.
-      const dry = float(2.0);
+      const greens = select(rPick.lessThan(0.55), float(0.0), select(rPick.lessThan(0.85), float(1.0), float(2.0)));
+      const dry = float(1.0);
       const warmProb = smoothstep(0.55, 0.9, drift).mul(0.25);
       let cIdx = select(hash(r2.mul(731.3)).lessThan(warmProb), dry, greens);
-      cIdx = select(fields.shadowMask(p).mul(0.9).greaterThan(hash(r4.mul(211.7))), float(4.0), cIdx);
+      cIdx = select(fields.shadowMask(p).mul(0.9).greaterThan(hash(r4.mul(211.7))), float(2.0), cIdx);
 
       // The light field is sampled ONCE per blade here and packed into the
       // row float's fraction — the fragment stage never touches the noise.

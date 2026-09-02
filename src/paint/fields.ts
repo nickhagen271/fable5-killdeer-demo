@@ -87,20 +87,20 @@ export class PaintFields {
     const rShadow = hash(r.mul(541.9).add(29.5));
     const rFlower = hash(r.mul(197.3).add(8.9));
 
-    // Greens dominate; warm-lit blades and soil notes in the warm drifts.
+    // Greens dominate; warm-lit blades in the warm drifts. Ground strokes
+    // never wear flower or soil rows — a meter-long stroke in a bloom color
+    // reads as a spill, not a fleck. Flower color comes from the dab system.
     const greens = select(rPick.lessThan(0.6), float(0.0), select(rPick.lessThan(0.86), float(1.0), float(2.0)));
-    const warms = select(rPick.lessThan(0.7), float(1.0), float(3.0));
     const warmProb = smoothstep(0.55, 0.88, drift).mul(0.55);
-    let idx = select(rFamily.lessThan(warmProb), warms, greens);
+    let idx = select(rFamily.lessThan(warmProb), float(1.0), greens);
 
     // Cool shadow masses swap to the blue-green note.
     idx = select(shadow.mul(0.85).greaterThan(rShadow), float(2.0), idx);
 
-    // Sparse broken-color flecks in the open (never inside shadow masses).
-    const open = float(1.0).sub(shadow);
-    const fleck = smoothstep(0.62, 0.8, flower).mul(flowerDrift).mul(open);
-    idx = select(fleck.mul(0.2).greaterThan(rFlower), float(7.0), idx);
-    idx = select(fleck.mul(0.12).greaterThan(hash(rFlower.mul(733.1))), float(11.0), idx);
+    // (rFlower and the flower fields stay computed for future soil patches.)
+    void flower;
+    void flowerDrift;
+    void rFlower;
 
     return idx;
   }
