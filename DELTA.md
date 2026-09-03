@@ -201,6 +201,79 @@ rufous rump/tail with black subterminal band and white tip when fanned.
 The bird reads as *Charadrius vociferus* at a one-second glance in side,
 front, and three-quarter.
 
+---
+
+## Phase 4 — worms, the loop, and the deploy
+
+Judged: `shots/phase-4/` — the full acceptance set in both palettes plus
+the bare turnaround, and `forage_hunt.png` from the playtest gate.
+
+**Gates, measured:**
+
+- **Playtest** (`npm run forage`): ten worms found and eaten in **31.0 s**
+  of simulated play against the three-minute budget, with no marker — the
+  controller only runs, stops and pecks. 432 worms resident in the ring
+  around the bird at start.
+- **Deploy** (`npm run build && npm run distcheck`): the production bundle
+  boots on a fresh browser at the exact Pages path and renders real
+  frames (WebGPU, compute self-test pass, 7 frames, zero page errors).
+- **Streaming** (`npm run trek`): unchanged from Phase 2 — one warm-up
+  stall over the 2 km run; the counter is live on the F3 HUD.
+
+Deltas found and fixed in this phase:
+
+1. **`base` was build-only**, so the built HTML requested
+   `/fable5-killdeer-demo/assets/*` while `npm run preview` served from
+   root — the bundle 404'd and the app never booted. The deploy gate
+   caught it on its first run; preview now shares the built base. This is
+   exactly the failure that would have shipped a blank Pages site.
+2. Worm density needed two passes to land in the spec's one-per-15-25 m²
+   band while still clustering on soil.
+3. The v1 food system's beetles and its fixed 90-spot disc were removed
+   outright — worms only, streamed with the world, per the BLUF.
+4. Peck reach widened to the spec's ~30 cm ahead of the bill (v1's 15 cm
+   made connecting feel arbitrary).
+5. The HUD moved from `h` to `F3` and gained strokes / worms / stalls.
+6. OrbitControls and the `c` freecam and `f` alert key are gone; the
+   follow camera itself now orbits on drag and zooms on scroll, damped.
+
+Carried, deliberately, as the honest remaining list:
+
+- Mid-distance grass blades still read a touch spiky in the *raw*
+  (`?post=0`) render; the post stack melts them at the distances they
+  appear, so the shipped frame is clean.
+- Dab hover reads slightly floaty on the steepest swells.
+- The soil fields could carry dry soil-toned strokes of their own rather
+  than only repainted grass strokes.
+
+---
+
+## Self-score
+
+10 = passes a one-second glance next to the reference at 1080p; 7 =
+clearly synthetic but the same class of image; 4 = good hobby demo; 2 =
+obviously a shader filter over a game.
+
+| Row | Score | What would raise it 2 points |
+|---|---|---|
+| Sky paint | 8 | Cloud *masses* with knife-edge tops rather than soft threshold shapes; a second scumbled layer at the horizon. |
+| Grass and ground strokes | 8 | Per-region stroke length/angle scripts so mown, tussocky and drift-blown areas differ in touch, not just color. |
+| Flower dabs | 8 | Petal-cluster silhouettes (three-lobe knife shapes) instead of one rounded footprint; occasional double-loaded two-color dabs. |
+| Depth and horizon band | 8 | A true third band — a mid-distance hedgerow line that reads continuous rather than as spaced masses. |
+| Impasto and canvas | 7 | A real accumulated height buffer from A1 dabs feeding the relief, instead of luminance as a height proxy. |
+| Color script | 9 | A dawn third script, and per-region palette drift within a script. |
+| Killdeer anatomy | 8 | Sculpted scapular/tertial feather groups and a true folded-primary silhouette rather than a smooth panel. |
+| Killdeer paint | 8 | Feather-group stroke direction fields (each tract painted along its own flow) instead of one body-wide flow. |
+| Locomotion feel | 8 | Foot-planting IK so strides don't slide on slopes; a broken-wing display. |
+| Endless world seamlessness | 9 | Terrain-aware region blending so soil fields and drifts follow the swells rather than crossing them. |
+| Worm find-and-eat loop | 8 | Worms that half-hide in grass tufts (partial occlusion) so searching rewards the head-tilt more. |
+| Performance | 7 | Real-GPU profiling and an adaptive stroke budget; the reduced preset is untested outside SwiftShader. |
+
+Two cheapest raises implemented this phase: the color-script row (both
+palettes fully drive sky, atmosphere, grade and every LUT row) and the
+seamlessness row (camera-anchored ground/sky/hills with terrain-draped
+scatter — no edge exists to find).
+
 **Painty test after fixes:** sky patch (zenith), sky patch (near horizon),
 foreground grass patch, mid-distance patch — all carry stroke texture,
 weave, or both; none could be mistaken for a smooth 3D render. The bird
