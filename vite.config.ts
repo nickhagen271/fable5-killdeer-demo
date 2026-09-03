@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, isPreview }) => ({
   build: {
     target: "esnext",
     chunkSizeWarningLimit: 4096,
@@ -16,5 +16,7 @@ export default defineConfig(({ command }) => ({
     target: "esnext",
   },
   // GitHub Pages serves from /<repo>/ — see .github/workflows/deploy.yml.
-  base: command === "build" ? "/fable5-killdeer-demo/" : "/",
+  // Preview shares the built base so `npm run preview` (and the deploy gate)
+  // serve the bundle at exactly the path Pages will; dev stays at root.
+  base: command === "build" || isPreview === true ? "/fable5-killdeer-demo/" : "/",
 }));

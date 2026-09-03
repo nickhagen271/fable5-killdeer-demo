@@ -10,6 +10,7 @@
     "typecheck": "tsc",
     "shots": "tsx tools/shots.ts",
     "trek": "tsx tools/trek.ts",
+    "distcheck": "tsx tools/distcheck.ts",
     "compare": "tsx tools/compare.ts",
     "motion": "tsx tools/motion.ts",
     "forage": "tsx tools/forage.ts"
