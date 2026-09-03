@@ -330,14 +330,24 @@ export class FlowerField {
       const open = float(1.0).sub(fields.shadowMask(p)).mul(float(1.0).sub(terrain.soil(p)));
       const keep = patch.mul(0.85).max(0.06).mul(open);
       const bloomAlive = select(keep.greaterThan(hash(group.mul(5.87).add(tileHash.mul(3.0)))), float(1.0), float(0.0));
-      // Dab 0 always; dabs 1–2 are the overlapping second and third touches.
-      const dabAlive = select(sub.lessThan(0.5), float(1.0), select(rSub.lessThan(0.72), float(1.0), float(0.0)));
+      // The XL class — the big foreground dabs of ref_d — only inside a
+      // DENSE drift, so a large touch always lands among company and never
+      // as one lone slab in open grass.
+      const isXL = select(hash(r3.mul(719.3)).greaterThan(0.94).and(patch.greaterThan(0.85)), float(1.0), float(0.0));
+
+      // Dab 0 always; dabs 1–2 are the overlapping second and third touches
+      // (an XL bloom always gets all three — big blooms read as clusters).
+      const subRoll = select(isXL.greaterThan(0.5), float(0.0), rSub);
+      const dabAlive = select(sub.lessThan(0.5), float(1.0), select(subRoll.lessThan(0.72), float(1.0), float(0.0)));
       const alive = bloomAlive.mul(dabAlive);
 
-      // Size: many small touches, a rare XL foreground dab; later touches of
+      // Size: many small touches, the occasional XL bloom; later touches of
       // one bloom are a bit smaller than the first.
-      let size = mix(float(0.045), float(0.11), pow(r3, 1.7));
-      size = size.mul(select(hash(r3.mul(719.3)).greaterThan(0.95), float(1.5), float(1.0)));
+      let size = mix(float(0.045), float(0.1), pow(r3, 1.7));
+      size = size.mul(mix(float(1.0), float(1.35), isXL));
+      // Lone blooms in open grass stay small: a big touch belongs to a
+      // drift, never sitting by itself as a slab of pure color.
+      size = size.mul(mix(float(0.45), float(1.0), patch));
       size = size.mul(select(sub.lessThan(0.5), float(1.0), float(0.78))).mul(alive);
 
       // Dab offset within the bloom and hover height ("stems" are unseen).
@@ -404,12 +414,18 @@ export class FlowerField {
       const d = positionWorld.xz.sub(cameraPosition.xz).length();
       Discard(smoothstep(FLOWER_CFG.rOut, FLOWER_CFG.rOut * 0.6, d).lessThan(hash(rand.mul(1341.1))));
 
-      // The dab footprint: a fat rounded knife touch, edge broken by noise,
-      // one side slightly squared where the knife lifted.
+      // The dab footprint: a LOBED knife touch — three or four petal lobes
+      // around the center, each a separate press of the blade, edges broken
+      // by noise. A rounded slab reads as a plastic chip at close range;
+      // lobes read as a bloom at any size.
+      const ang = v.atan(u);
+      const lobeCount = hash(rand.mul(53.1)).mul(2.0).floor().mul(1.0).add(3.0); // 3 or 4
+      const lobes = cos(ang.mul(lobeCount).add(rand.mul(21.7))).mul(0.26);
       const radial = u.mul(u).mul(4.0).add(v.mul(v).mul(4.0));
       const edgeNoise = mx_noise_float(vec3(u.mul(5.0), v.mul(5.0), rand.mul(217.9))).mul(0.3);
-      const liftEdge = smoothstep(0.1, 0.45, u.add(0.5)).mul(0.12);
-      Discard(radial.add(edgeNoise).sub(liftEdge).greaterThan(1.0));
+      Discard(radial.sub(lobes).add(edgeNoise).greaterThan(1.0));
+      // A small dark eye where the petals meet (poppies and daisies both).
+      const eye = smoothstep(0.14, 0.02, radial);
 
       // Knife-drag streaks along the dab: banded, not smooth — the touch is
       // ONE plane of pigment with drag marks, never a shaded ball.
@@ -418,7 +434,11 @@ export class FlowerField {
 
       const dither = hash(positionWorld.x.mul(59.3).add(positionWorld.z.mul(83.1))).sub(0.5).mul(0.04);
       const touchJitter = hash(rand.mul(391.3)).sub(0.5).mul(0.14);
-      const value = clamp(lit.mul(0.28).add(0.64).add(touchJitter).add(bands.mul(0.14)).add(dither), 0.3, 0.98);
+      const value = clamp(
+        lit.mul(0.28).add(0.64).add(touchJitter).add(bands.mul(0.14)).add(dither).sub(eye.mul(0.42)),
+        0.05,
+        0.98,
+      );
       const rowV = cIdx.add(0.5).div(lut.rows);
       const paint = texture(lut.texture, vec2(value, rowV)).rgb;
 
