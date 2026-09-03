@@ -15,5 +15,6 @@ export default defineConfig(({ command }) => ({
   esbuild: {
     target: "esnext",
   },
-  base: command === "build" ? "/laas/" : "/",
+  // GitHub Pages serves from /<repo>/ — see .github/workflows/deploy.yml.
+  base: command === "build" ? "/fable5-killdeer-demo/" : "/",
 }));

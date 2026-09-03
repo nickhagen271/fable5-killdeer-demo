@@ -1,5 +1,4 @@
 import { Vector2, Vector3 } from "three/webgpu";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { installHooks } from "./core/hooks";
 import { readParams } from "./core/params";
 import { Hud } from "./debug/hud";
@@ -58,11 +57,9 @@ async function main(): Promise<void> {
     params.hud,
   );
 
-  // Interactive mode: the follow camera owns the view; 'c' toggles a free
-  // orbit camera for inspection. Harness mode: shots and setPose only.
+  // Interactive mode: the follow camera owns the view (drag orbits, scroll
+  // zooms). Harness mode: shots and setPose only.
   const followCam = params.harness ? null : new FollowCamera(world.camera, world.terrain);
-  let freeCam: OrbitControls | null = null;
-  let freeMode = false;
 
   const setShot = (name: string): boolean => {
     if (!world.applyShot(name)) return false;
@@ -96,10 +93,10 @@ async function main(): Promise<void> {
   hooks.foodInfo = () => {
     const bx = world.bird.position.x;
     const bz = world.bird.position.z;
-    const near = world.food.nearest(bx, bz);
+    const near = world.worms.nearest(bx, bz);
     return {
-      total: world.food.total,
-      eaten: world.food.eaten,
+      total: world.worms.residentCount,
+      eaten: world.worms.eaten,
       bird: [bx, bz] as const,
       nearest: near ? ([near.x, near.z] as const) : null,
     };
@@ -118,19 +115,29 @@ async function main(): Promise<void> {
 
   if (followCam) {
     followCam.snap(world.bird);
-    window.addEventListener("keydown", (ev) => {
-      if (ev.key.toLowerCase() === "c") {
-        freeMode = !freeMode;
-        if (freeMode && !freeCam) {
-          freeCam = new OrbitControls(world.camera, renderer.domElement);
-          freeCam.enableDamping = true;
-        }
-        if (freeCam) {
-          freeCam.enabled = freeMode;
-          if (freeMode) freeCam.target.copy(world.bird.position);
-        }
-      }
-    });
+    followCam.attach(renderer.domElement);
+  }
+
+  // The worm counter: a single small painted number, top-left, in the
+  // palette's cream. The only UI in play.
+  let counterEl: HTMLDivElement | null = null;
+  let counterShown = -1;
+  if (!params.harness) {
+    counterEl = document.createElement("div");
+    counterEl.style.cssText = [
+      "position:fixed",
+      "top:18px",
+      "left:22px",
+      "z-index:10",
+      "font:italic 600 30px Georgia, 'Times New Roman', serif",
+      "color:#fbe9c8",
+      "text-shadow:0 1px 2px rgba(62,58,42,0.55), 0 0 12px rgba(62,58,42,0.25)",
+      "transform:rotate(-2.5deg)",
+      "pointer-events:none",
+      "user-select:none",
+    ].join(";");
+    counterEl.textContent = "0";
+    document.body.appendChild(counterEl);
   }
 
   const onResize = (): void => {
@@ -186,16 +193,16 @@ async function main(): Promise<void> {
 
       world.bird.update(dt, move, {
         peck: pressed.has(" "),
-        alert: pressed.has("f"),
+        alert: false,
       });
       pressed.clear();
 
-      if (freeMode && freeCam) {
-        freeCam.update();
-      } else if (followCam) {
-        followCam.update(dt, world.bird);
-      }
+      followCam?.update(dt, world.bird);
       hud.setInfo({ bird: world.bird.anim.state });
+      if (counterEl && world.worms.eaten !== counterShown) {
+        counterShown = world.worms.eaten;
+        counterEl.textContent = String(counterShown);
+      }
     }
 
     // Streaming must never hitch: the JS-side cost of re-placing tiles is
@@ -221,6 +228,10 @@ async function main(): Promise<void> {
         height: container.clientHeight,
         pixelRatio: renderer.getPixelRatio(),
         frame: hooks.frame,
+        strokes: world.strokeCount,
+        wormsEaten: world.worms.eaten,
+        stalls: hooks.stallCount,
+        worstUpdateMs: hooks.worstUpdateMs,
       },
       now,
     );

@@ -8,11 +8,11 @@ import { STROKE_LODS, StrokeLOD } from "../paint/strokes";
 import { buildUnderpaint } from "../paint/underpaint";
 import { FlowerField, GRASS_LODS, GrassLOD } from "../paint/vegetation";
 import { WindField } from "../paint/wind";
-import { FoodSystem } from "./food";
 import { Groves } from "./groves";
 import { HorizonBand } from "./horizon";
 import { buildSkyDome } from "./sky";
 import { Terrain } from "./terrain";
+import { WormSystem } from "./worms";
 
 /**
  * The world: one open sunlit ground surface painted with world-anchored
@@ -102,7 +102,7 @@ export interface PaintWorld {
   readonly shots: readonly Shot[];
   readonly strokeCount: number;
   readonly bird: Bird;
-  readonly food: FoodSystem;
+  readonly worms: WormSystem;
   readonly wind: WindField;
   readonly palette: PaletteState;
   readonly terrain: Terrain;
@@ -169,15 +169,18 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
   const bird = new Bird(lut, seed, terrain);
   scene.add(bird.root);
 
-  const food = new FoodSystem(seed, lut, terrain);
-  scene.add(food.mesh);
+  const worms = new WormSystem(seed, lut, terrain, wind);
+  scene.add(worms.mesh);
+  scene.add(worms.puffs);
+  worms.update(0, 0);
 
   // The forage connect: when the bill meets the ground, the nearest live
-  // spot within reach is taken, and the bird gets its gulp-and-scan beat.
+  // worm within reach (~30 cm ahead of the bill) is taken, the puff plays,
+  // and the bird gets its gulp-and-scan beat.
   bird.anim.onPeckContact = (): void => {
-    const bx = bird.position.x + Math.sin(bird.heading) * 0.14;
-    const bz = bird.position.z + Math.cos(bird.heading) * 0.14;
-    if (food.tryEat(bx, bz, 0.15)) bird.anim.notifyEat();
+    const bx = bird.position.x + Math.sin(bird.heading) * 0.16;
+    const bz = bird.position.z + Math.cos(bird.heading) * 0.16;
+    if (worms.tryEat(bx, bz, 0.3)) bird.anim.notifyEat();
   };
 
   const camera = new PerspectiveCamera(45, aspect, 0.05, 1500);
@@ -202,11 +205,25 @@ export function buildPaintWorld(seed: number, aspect: number, paletteName: Palet
     const cz = camera.position.z;
     for (const s of streamers) s.update(renderer, cx, cz);
     horizon?.update(cx, cz);
+
+    // Worms live around the BIRD, and the head-tilt is the only hint: a
+    // worm within ~2 m tips the head toward its side.
+    const bx = bird.position.x;
+    const bz = bird.position.z;
+    worms.update(bx, bz);
+    const near = worms.nearest(bx, bz);
+    if (near && near.d < 2 && near.d > 0.05) {
+      const dx = near.x - bx;
+      const dz = near.z - bz;
+      // Sign of the cross product against the heading picks the tilt side.
+      const cross = Math.sin(bird.heading) * dz - Math.cos(bird.heading) * dx;
+      bird.anim.noticeFood(cross > 0 ? 1 : -1);
+    }
     // Ground grid and sky dome follow the camera (snapped so vertices never
     // swim); the world itself never ends.
     underpaint.snapU.value.set(Math.round(cx / 2) * 2, Math.round(cz / 2) * 2);
     sky.position.set(cx, 0, cz);
   };
 
-  return { scene, camera, shots: SHOTS, strokeCount, bird, food, wind, palette, terrain, applyShot, update };
+  return { scene, camera, shots: SHOTS, strokeCount, bird, worms, wind, palette, terrain, applyShot, update };
 }

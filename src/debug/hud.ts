@@ -8,6 +8,10 @@ export interface HudStats {
   readonly height: number;
   readonly pixelRatio: number;
   readonly frame: number;
+  readonly strokes: number;
+  readonly wormsEaten: number;
+  readonly stalls: number;
+  readonly worstUpdateMs: number;
 }
 
 export interface HudInfo {
@@ -52,7 +56,10 @@ export class Hud {
     parent.appendChild(this.el);
 
     window.addEventListener("keydown", (ev) => {
-      if (ev.key === "h" || ev.key === "H") this.toggle();
+      if (ev.key === "F3") {
+        ev.preventDefault();
+        this.toggle();
+      }
     });
   }
 
@@ -71,17 +78,20 @@ export class Hud {
 
     const a = this.info.adapter;
     this.el.textContent = [
-      `PKD phase 0 · three r${REVISION}`,
+      `killdeer v2 · three r${REVISION}`,
       `backend  ${this.info.backend}`,
       `adapter  ${a.vendor || "?"} / ${a.architecture || "?"} ${a.device || ""}`.trimEnd(),
       `fps      ${stats.fps.toFixed(0)}  (${stats.frameMs.toFixed(2)} ms)  frame ${stats.frame}`,
       `size     ${stats.width}x${stats.height} @${stats.pixelRatio.toFixed(2)}x`,
+      `strokes  ${stats.strokes}`,
       `seed     ${this.info.seed}`,
       `shot     ${this.info.shot}`,
       `bird     ${this.info.bird ?? "-"}`,
       `palette  ${this.info.palette ?? "-"}`,
+      `worms    ${stats.wormsEaten} eaten`,
+      `stalls   ${stats.stalls} >8ms (worst ${stats.worstUpdateMs.toFixed(1)} ms)`,
       `compute  ${this.info.computeTest}`,
-      `keys     h hud · wasd run · space peck · p palette · f alert · c freecam`,
+      `keys     f3 hud · wasd run · space peck · p palette · drag orbit · scroll zoom`,
     ].join("\n");
   }
 }

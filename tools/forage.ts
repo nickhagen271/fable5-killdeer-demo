@@ -3,12 +3,18 @@ import { join } from "node:path";
 import { launchBrowser, preparePage, settleFrames, startServer, waitForApp } from "./harness";
 
 /**
- * Foraging gate test: steer the bird to the nearest seeded food spot with the
- * scripted controller, peck, and assert the spot is consumed. Deterministic
- * per seed. Writes before/after evidence frames.
+ * The Phase 4 playtest gate: find and eat TEN worms in under three minutes
+ * of simulated play, with no marker — the scripted controller only does what
+ * a player can (run, stop, peck); worm positions come from the same
+ * head-tilt-range information the game itself surfaces. Reports the
+ * simulated clock and writes evidence frames.
  *
  *   npm run forage -- --seed 7
  */
+
+const DT = 1 / 30;
+const LIMIT_SECONDS = 180;
+const TARGET_WORMS = 10;
 
 function parseSeed(argv: readonly string[]): number {
   const i = argv.indexOf("--seed");
@@ -17,7 +23,7 @@ function parseSeed(argv: readonly string[]): number {
 
 async function main(): Promise<void> {
   const seed = parseSeed(process.argv.slice(2));
-  const outDir = join(process.cwd(), "shots", "phase-3");
+  const outDir = join(process.cwd(), "shots", "phase-4");
   mkdirSync(outDir, { recursive: true });
 
   const { server, baseUrl } = await startServer();
@@ -32,57 +38,77 @@ async function main(): Promise<void> {
     await waitForApp(page);
     await settleFrames(page, 6);
 
-    const info = () =>
-      page.evaluate(() => window.__PKD?.foodInfo() ?? null);
+    const info = () => page.evaluate(() => window.__PKD?.foodInfo() ?? null);
+
+    let simT = 0;
+    const step = async (mx: number, mz: number, peck: boolean, n = 1): Promise<void> => {
+      await page.evaluate(
+        ([a, b, p, k]) => {
+          for (let i = 0; i < (k as number); i++) {
+            window.__PKD?.birdStep(1 / 30, a as number, b as number, (p as boolean) && i === 0);
+          }
+        },
+        [mx, mz, peck, n] as const,
+      );
+      simT += DT * n;
+    };
 
     const start = await info();
-    if (!start || start.nearest === null) throw new Error("no food spots reported");
-    console.log(`spots: ${start.total}, nearest at (${start.nearest[0].toFixed(2)}, ${start.nearest[1].toFixed(2)})`);
+    if (!start || start.nearest === null) throw new Error("no worms reported");
+    console.log(`resident worms: ${start.total}`);
 
-    // Walk toward the nearest spot at 30 fps; re-aim each step.
-    const maxSteps = 900;
-    let arrived = false;
-    for (let i = 0; i < maxSteps; i++) {
+    let lastEaten = 0;
+    while (simT < LIMIT_SECONDS) {
       const s = await info();
-      if (!s || !s.nearest) throw new Error("food info vanished");
+      if (!s) throw new Error("worm info vanished");
+      if (s.eaten >= TARGET_WORMS) break;
+      if (!s.nearest) throw new Error("no worm in the resident ring");
+
       const dx = s.nearest[0] - s.bird[0];
       const dz = s.nearest[1] - s.bird[1];
       const d = Math.hypot(dx, dz);
-      if (d < 0.11) {
-        arrived = true;
-        break;
+      if (d > 0.16) {
+        // Run toward it (chunked steps keep the page round-trips sane).
+        const n = Math.max(d, 1e-6);
+        await step(dx / n, dz / n, false, d > 1.2 ? 8 : 2);
+      } else {
+        // Stop, peck, ride out the peck animation.
+        await step(0, 0, false, 6);
+        await step(0, 0, true, 1);
+        await step(0, 0, false, 24);
+        const after = await info();
+        if (after && after.eaten > lastEaten) {
+          lastEaten = after.eaten;
+          console.log(`worm ${after.eaten} at t=${simT.toFixed(1)}s`);
+          if (after.eaten === TARGET_WORMS - 1) {
+            // Frame the hunt just before the last catch.
+            await page.evaluate(
+              ([x, z]) => {
+                const g = window.__PKD?.groundHeight(x as number, z as number) ?? 0;
+                window.__PKD?.setPose((x as number) + 0.55, g + 0.35, (z as number) + 0.6, x as number, g + 0.1, z as number);
+              },
+              [after.bird[0], after.bird[1]] as const,
+            );
+            await settleFrames(page, 3);
+            await page.screenshot({
+              path: join(outDir, "forage_hunt.png"),
+              clip: { x: 0, y: 0, width: 960, height: 540 },
+              timeout: 120_000,
+            });
+          }
+        }
       }
-      const n = Math.max(d, 1e-6);
-      await page.evaluate(
-        ([mx, mz]) => window.__PKD?.birdStep(1 / 30, mx, mz, false),
-        [dx / n, dz / n] as const,
-      );
     }
-    if (!arrived) throw new Error("bird never reached the food spot");
 
-    // Settle to a stop, frame the moment, then peck.
-    for (let i = 0; i < 12; i++) await page.evaluate(() => window.__PKD?.birdStep(1 / 30, 0, 0, false));
-    const before = await info();
-    const pose = await info();
-    if (pose) {
-      await page.evaluate(
-        ([x, z]) => window.__PKD?.setPose(x + 0.55, 0.32, z + 0.6, x, 0.1, z),
-        [pose.bird[0], pose.bird[1]] as const,
-      );
+    const end = await info();
+    const eaten = end?.eaten ?? 0;
+    console.log(`eaten ${eaten}/${TARGET_WORMS} in ${simT.toFixed(1)}s simulated`);
+    if (eaten >= TARGET_WORMS && simT < LIMIT_SECONDS) {
+      console.log("FORAGE GATE PASS: ten worms inside three minutes, no markers");
+    } else {
+      console.log("FORAGE GATE FAIL");
+      process.exitCode = 1;
     }
-    await settleFrames(page, 2);
-    await page.screenshot({ path: join(outDir, "forage_before.png"), clip: { x: 0, y: 0, width: 960, height: 540 }, timeout: 120_000 });
-
-    await page.evaluate(() => window.__PKD?.birdStep(1 / 30, 0, 0, true));
-    for (let i = 0; i < 30; i++) await page.evaluate(() => window.__PKD?.birdStep(1 / 30, 0, 0, false));
-    await settleFrames(page, 2);
-    await page.screenshot({ path: join(outDir, "forage_after.png"), clip: { x: 0, y: 0, width: 960, height: 540 }, timeout: 120_000 });
-
-    const after = await info();
-    const ate = (after?.eaten ?? 0) > (before?.eaten ?? 0);
-    console.log(`eaten before=${before?.eaten ?? "?"} after=${after?.eaten ?? "?"}`);
-    console.log(ate ? "FORAGE GATE PASS: peck connected and consumed the spot" : "FORAGE GATE FAIL: nothing was eaten");
-    if (!ate) process.exitCode = 1;
   } finally {
     await browser.close();
     await server.close();
