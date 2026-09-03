@@ -285,7 +285,7 @@ export interface FlowerConfig extends TileStream {
  * the feet (a rare XL class carries the ref_d foreground), specks by 30 m,
  * eroded away entirely by 80 m.
  */
-export const FLOWER_CFG: FlowerConfig = { tileSize: 8, grid: 21, perTile: 36, rOut: 80 };
+export const FLOWER_CFG: FlowerConfig = { tileSize: 8, grid: 21, perTile: 90, rOut: 80 };
 
 export class FlowerField {
   readonly mesh: InstancedMesh;
@@ -325,10 +325,13 @@ export class FlowerField {
 
       // Blooms live in drifts, never in shadow masses, with a light scatter
       // of loners so no view is flowerless.
+      // Drifts are DENSE — a poppy drift in ref_b is a mass of color, not a
+      // scatter. Inside a drift nearly every bloom lives; between drifts a
+      // thin scatter keeps the field from ever being bare.
       const drift = fields.n01(p, 0.09, 71.9);
-      const patch = smoothstep(0.42, 0.72, drift);
+      const patch = smoothstep(0.38, 0.66, drift);
       const open = float(1.0).sub(fields.shadowMask(p)).mul(float(1.0).sub(terrain.soil(p)));
-      const keep = patch.mul(0.85).max(0.06).mul(open);
+      const keep = patch.mul(0.97).max(0.34).mul(open);
       const bloomAlive = select(keep.greaterThan(hash(group.mul(5.87).add(tileHash.mul(3.0)))), float(1.0), float(0.0));
       // The XL class — the big foreground dabs of ref_d — only inside a
       // DENSE drift, so a large touch always lands among company and never
