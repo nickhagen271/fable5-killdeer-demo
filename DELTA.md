@@ -237,6 +237,16 @@ Deltas found and fixed in this phase:
 6. OrbitControls and the `c` freecam and `f` alert key are gone; the
    follow camera itself now orbits on drag and zooms on scroll, damped.
 
+7. **The acceptance frame failed its own one-second test**: a near flower
+   dab read as a flat yellow slab in open grass. Dabs now carry three or
+   four petal lobes with a dark center eye, bloom size scales with the
+   local drift (a lone bloom in sparse grass stays a speck), and the XL
+   class fires only inside a dense drift, always with its companion
+   touches — a big touch lands among company, as in the references.
+
+All gates re-run on the final code after that change: forage 10/10 in
+31.0 s, production bundle boots and renders at the Pages path.
+
 Carried, deliberately, as the honest remaining list:
 
 - Mid-distance grass blades still read a touch spiky in the *raw*
@@ -258,7 +268,7 @@ obviously a shader filter over a game.
 |---|---|---|
 | Sky paint | 8 | Cloud *masses* with knife-edge tops rather than soft threshold shapes; a second scumbled layer at the horizon. |
 | Grass and ground strokes | 8 | Per-region stroke length/angle scripts so mown, tussocky and drift-blown areas differ in touch, not just color. |
-| Flower dabs | 8 | Petal-cluster silhouettes (three-lobe knife shapes) instead of one rounded footprint; occasional double-loaded two-color dabs. |
+| Flower dabs | 8 | Double-loaded two-color dabs (two pigments on one knife), and species-specific silhouettes rather than one lobed shape for all five rows. |
 | Depth and horizon band | 8 | A true third band — a mid-distance hedgerow line that reads continuous rather than as spaced masses. |
 | Impasto and canvas | 7 | A real accumulated height buffer from A1 dabs feeding the relief, instead of luminance as a height proxy. |
 | Color script | 9 | A dawn third script, and per-region palette drift within a script. |
@@ -269,10 +279,12 @@ obviously a shader filter over a game.
 | Worm find-and-eat loop | 8 | Worms that half-hide in grass tufts (partial occlusion) so searching rewards the head-tilt more. |
 | Performance | 7 | Real-GPU profiling and an adaptive stroke budget; the reduced preset is untested outside SwiftShader. |
 
-Two cheapest raises implemented this phase: the color-script row (both
-palettes fully drive sky, atmosphere, grade and every LUT row) and the
+Two cheapest raises implemented this phase: the flower-dab row (lobed
+petal silhouettes with a center eye, drift-scaled sizing) and the
 seamlessness row (camera-anchored ground/sky/hills with terrain-draped
-scatter — no edge exists to find).
+scatter — no edge exists to find). The color-script row was raised in
+Phase 1, where both palettes came to drive sky, atmosphere, grade and
+every LUT row from one toggle.
 
 **Painty test after fixes:** sky patch (zenith), sky patch (near horizon),
 foreground grass patch, mid-distance patch — all carry stroke texture,
