@@ -18,21 +18,29 @@ interface Pair {
   readonly note: string;
 }
 
-// Which reference painting each shot is judged against.
+// Which reference painting each shot is judged against. The first three
+// rows are the spec's FINAL ACCEPTANCE frames.
 const PAIRS: readonly Pair[] = [
+  { shot: "hero", ref: "Ref 4.jpg", note: "ACCEPTANCE 1 — bird at rest in a sunset meadow, horizon upper third, foreground dabs" },
+  { shot: "meadow_overcast", ref: "Ref 2.jpg", note: "ACCEPTANCE 2 — overcast poppy drift, treeline dissolving behind" },
+  { shot: "td_side", ref: "KD3.png", note: "ACCEPTANCE 3 — killdeer turnaround beside the reference" },
+  { shot: "td_34", ref: "KD1.png", note: "turnaround three-quarter — bands, face, eye ring" },
+  { shot: "td_fan", ref: "KD2.png", note: "tail fanned — the rufous flash" },
+  { shot: "sun", ref: "Ref 4.jpg", note: "facing the low sun — glow disc, peach pool, lit hill flanks" },
   { shot: "vista", ref: "Ref 1.jpg", note: "open field vista — value masses, haze, sky share" },
-  { shot: "ground", ref: "Ref 2.jpg", note: "low meadow read — broken color, poppy accents" },
+  { shot: "vista_overcast", ref: "Ref 1.jpg", note: "overcast vista — massed cumulus, cool greens" },
+  { shot: "ground", ref: "Ref 2.jpg", note: "low meadow read — broken color, flower accents" },
+  { shot: "ground_overcast", ref: "Ref 2.jpg", note: "overcast low meadow — poppy and cornflower specks" },
   { shot: "sky", ref: "Ref 1.jpg", note: "sky and cloud handling" },
   { shot: "detail", ref: "Ref 4.jpg", note: "close ground passage — stroke and paint body" },
   { shot: "macro", ref: "Ref 4.jpg", note: "impasto relief at grazing view — paint body and sheen" },
-  { shot: "meadow", ref: "Ref 2.jpg", note: "bird-height meadow — grass tufts, poppy drifts" },
-  { shot: "treeline", ref: "Ref 1.jpg", note: "distant tree masses dissolving into the haze" },
+  { shot: "meadow", ref: "Ref 2.jpg", note: "bird-height meadow — grass tufts, flower drifts" },
+  { shot: "treeline", ref: "Ref 1.jpg", note: "streamed groves dissolving into the haze" },
   { shot: "bird_idle", ref: "KD3.png", note: "killdeer identity at rest — bands, face, posture" },
-  { shot: "bird_run", ref: "KD1.png", note: "killdeer running — gait, lean, markings in motion" },
+  { shot: "bird_run", ref: "KD1.png", note: "killdeer running — nose-down gait, steady head" },
   { shot: "bird_alert", ref: "KD2.png", note: "alert stance vs reference paint language" },
   { shot: "bird_peck", ref: "KD1.png", note: "peck — forward tilt, bill to ground" },
-  { shot: "hero", ref: "Ref 2.jpg", note: "THE one-frame test: killdeer mid-forage, poppies, hazy sky" },
-  { shot: "monet", ref: "Ref 1.jpg", note: "wide composition — field, treeline band, sky share" },
+  { shot: "monet", ref: "Ref 1.jpg", note: "wide composition — field, horizon band, sky share" },
 ];
 
 function parsePhase(argv: readonly string[]): number {
