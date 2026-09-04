@@ -2,7 +2,7 @@
   "phase": 4,
   "seed": 7,
   "size": "1280x720",
-  "capturedAt": "2026-09-03T23:46:21.568Z",
+  "capturedAt": "2026-09-04T00:06:26.915Z",
   "backend": "WebGPU",
   "adapter": {
     "vendor": "google",
@@ -12,6 +12,6 @@
   },
   "computeTest": "pass",
   "shots": [
-    "hero"
+    "ground"
   ]
 }
